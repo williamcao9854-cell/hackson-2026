@@ -7,7 +7,9 @@ import SwiftUI
 enum PlaceholderSpiritArt {
     @MainActor
     static func render(sticker: UIImage, palette: [RGB], side: CGFloat = 1024) -> Data? {
-        let view = PlaceholderArtwork(sticker: sticker, palette: palette)
+        // 不直接用照片：先处理成水墨线条 + 淡彩，看起来像一幅画，而不是一张产品照
+        let painted = ImageProcessing.inkWash(sticker) ?? sticker
+        let view = PlaceholderArtwork(sticker: painted, palette: palette)
             .frame(width: side, height: side)
             .environment(\.colorScheme, .light)
         let renderer = ImageRenderer(content: view)

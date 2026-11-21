@@ -49,6 +49,8 @@ final class Spirit {
     @Attribute(.externalStorage) var stickerImageData: Data?
     /// 从插画里抠出的物灵（带白边），用于立牌和园林里的小人
     @Attribute(.externalStorage) var figureImageData: Data?
+    /// LiDAR 扫描得到的原物 3D 模型文件名（Documents/Scans 下）
+    var scanFileName: String?
     /// 插画是否为离线占位（没有连上图像 API 时）
     var isPlaceholderArt: Bool = false
 

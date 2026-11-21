@@ -66,15 +66,82 @@ enum ImageProcessing {
         guard let art = UIImage(data: data) else { return nil }
         let cutout = liftSubject(from: normalized(art, maxDimension: 1200))
         guard cutout.foundSubject else { return nil }
-        let size = cutout.sticker.size
+        let sticker = trimmed(cutout.sticker)
+        let size = sticker.size
         let scale = min(1, 900 / max(size.width, size.height))
-        guard scale < 1 else { return cutout.sticker.pngData() }
+        guard scale < 1 else { return sticker.pngData() }
         let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         return UIGraphicsImageRenderer(size: target, format: format).image { _ in
-            cutout.sticker.draw(in: CGRect(origin: .zero, size: target))
+            sticker.draw(in: CGRect(origin: .zero, size: target))
         }.pngData()
+    }
+
+    /// 裁掉四周完全透明的边，让立牌的脚正好落在底座上
+    static func trimmed(_ image: UIImage) -> UIImage {
+        guard let cg = image.cgImage else { return image }
+        let width = cg.width, height = cg.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn: Bool = pixels.withUnsafeMutableBytes { buffer in
+            guard let ctx = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                      bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return image }
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            let row = y * width * 4
+            for x in 0..<width where pixels[row + x * 4 + 3] > 8 {
+                if x < minX { minX = x }
+                if x > maxX { maxX = x }
+                if y < minY { minY = y }
+                if y > maxY { maxY = y }
+            }
+        }
+        guard maxX >= minX, maxY >= minY else { return image }
+        let rect = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+        guard let cropped = cg.cropping(to: rect) else { return image }
+        return UIImage(cgImage: cropped)
+    }
+
+    /// 离线时把物品照片处理成"水墨线条 + 淡彩"的插画感：
+    /// 线条来自边缘检测，颜色做了色阶简化、降饱和，保留原来的透明边缘。
+    static func inkWash(_ image: UIImage) -> UIImage? {
+        guard let input = CIImage(image: image) else { return nil }
+        let extent = input.extent
+
+        let soft = input.applyingGaussianBlur(sigma: 1.4).cropped(to: extent)
+        let posterize = CIFilter.colorPosterize()
+        posterize.inputImage = soft
+        posterize.levels = 8
+        let controls = CIFilter.colorControls()
+        controls.inputImage = posterize.outputImage
+        controls.saturation = 0.72
+        controls.brightness = 0.05
+        controls.contrast = 0.92
+        guard let wash = controls.outputImage?.cropped(to: extent) else { return nil }
+
+        let lines = CIFilter.lineOverlay()
+        lines.inputImage = input
+        lines.nrNoiseLevel = 0.06
+        lines.nrSharpness = 0.7
+        lines.edgeIntensity = 1.2
+        lines.threshold = 0.14
+        lines.contrast = 40
+        guard let ink = lines.outputImage?.cropped(to: extent) else { return nil }
+
+        let painted = ink.composited(over: wash)
+        // 只保留原图不透明的部分
+        let mask = CIFilter.blendWithAlphaMask()
+        mask.inputImage = painted
+        mask.backgroundImage = CIImage(color: .clear).cropped(to: extent)
+        mask.maskImage = input
+        guard let output = mask.outputImage,
+              let cg = context.createCGImage(output, from: extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     /// 给透明主体加一圈白边，像一张真正的贴纸。

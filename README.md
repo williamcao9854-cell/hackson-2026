@@ -3,7 +3,7 @@
 > 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手；或者，把它和它的故事一起传给下一个人。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
-技术栈：Swift · SwiftUI · Liquid Glass · Core ML · Vision · Foundation Models（端侧看图） · TipKit · AMD 图像生成 API
+技术栈：Swift · SwiftUI · Liquid Glass · Core ML（FastViT · Depth Anything） · Vision · Foundation Models · SceneKit · Object Capture · AR Quick Look · MultipeerConnectivity · TipKit · AMD 图像生成 API
 
 - 📐 [开发计划](docs/PLAN.md)：设计调研、设计语言「和纸与朱印」、技术方案
 - 💡 [创意方案 v4](docs/IDEAS-v4.md)：物灵是从这里选出来的
@@ -104,10 +104,11 @@ Wuling/
 │   ├── Collection/         园林首页、图鉴、物灵详情（立牌/画作/原貌）、分享卡片、关于
 │   ├── Onboarding/         第一次打开的三页引导
 │   ├── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
-│   └── Relay/              传灵：盖章传出、面对面传 / 接灵、收下物灵
+│   ├── Relay/              传灵：盖章传出、面对面传 / 接灵、收下物灵
+│   └── Scan/               LiDAR 精细扫描（Object Capture）
 ├── Models/                 物灵（SwiftData）、陪伴时长、传灵章节与胶囊
 ├── Services/               抠图、识别、取色、起名、提示词、图像 API、相机、节气、面对面连接
-└── Resources/              App 图标、FastViT 识别模型、API 配置模板
+└── Resources/              App 图标、FastViT 识别模型、Depth Anything 深度模型、API 配置模板
 Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本
 tools/generate_poster.py    调用 AMD API 生成项目海报

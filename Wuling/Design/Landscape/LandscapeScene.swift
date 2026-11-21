@@ -14,12 +14,15 @@ struct LandscapeScene {
     var lanterns: Int
     /// 已传出的物灵：化作远天的鸿雁
     var geese: Int
+    /// 是否画日月。作为其他页面的淡背景时不画：日月会透到内容后面，像一块污渍
+    var showsCelestial: Bool
 
-    init(date: Date, isDark: Bool, lanterns: Int, geese: Int) {
+    init(date: Date, isDark: Bool, lanterns: Int, geese: Int, showsCelestial: Bool = true) {
         phase = isDark ? .night : DayPhase(date: date)
         season = SolarTerm(date: date).season
         self.lanterns = lanterns
         self.geese = geese
+        self.showsCelestial = showsCelestial
     }
 
     var isNight: Bool { phase == .night }
@@ -61,7 +64,7 @@ struct LandscapeScene {
         case .dusk:
             let mountains: [Color] = [c(0x9C8E92, 1), c(0x6F6269, 1), c(0x4B4049, 1)]
             return Palette(skyTop: c(0xD9BBA6, 1), skyBottom: c(0xF2E2D2, 1), mountains: mountains,
-                           celestial: c(0xC8442F, 0.92), celestialGlow: c(0xE8906F, 0.35), ink: c(0x3A2F2C, 1))
+                           celestial: c(0xD0664E, 0.72), celestialGlow: c(0xE8A080, 0.3), ink: c(0x3A2F2C, 1))
         case .night:
             let mountains: [Color] = [c(0x30343C, 1), c(0x22262D, 1), c(0x171A20, 1)]
             return Palette(skyTop: c(0x10131A, 1), skyBottom: c(0x23262D, 1), mountains: mountains,
@@ -143,7 +146,7 @@ struct LandscapeScene {
         context.fill(Path(Self.rect(0, 0, w, h)), with: Self.vertical(p.skyTop, p.skyBottom, from: 0, to: waterY))
 
         if isNight { drawStars(context, w: w, h: h, t: t) }
-        drawCelestial(context, w: w, h: h, tx: tx, ty: ty)
+        if showsCelestial { drawCelestial(context, w: w, h: h, tx: tx, ty: ty) }
         if geese > 0 { drawGeese(context, w: w, h: h, t: t, tx: tx) }
 
         // 三层山：远淡近浓，山脚化入雾中
@@ -278,6 +281,7 @@ struct LandscapeScene {
         }
 
         // 日月倒影：一串闪动的短横
+        guard showsCelestial else { return }
         let cx: Double = celestialUnit.x * w
         for i in 0..<6 {
             let k = Double(i)

@@ -15,7 +15,7 @@ struct AmbientBackdrop: View {
             PaperBackground()
             TimelineView(.everyMinute) { timeline in
                 LivingLandscape(scene: LandscapeScene(date: timeline.date, isDark: colorScheme == .dark,
-                                                      lanterns: lanterns, geese: geese))
+                                                      lanterns: lanterns, geese: geese, showsCelestial: false))
             }
             .opacity(intensity)
             .mask {

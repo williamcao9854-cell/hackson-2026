@@ -11,10 +11,13 @@ struct SpiritDetailView: View {
     /// 查看方式
     enum ArtMode: String, CaseIterable, Identifiable {
         case standee = "立牌"
+        case figurine = "手办"
+        case scan = "扫描"
         case painting = "画作"
         case original = "原貌"
         var id: String { rawValue }
     }
+    @State private var showingScan = false
     @State private var mode: ArtMode = .standee
     private let standeeTip = StandeeTip()
     @State private var showingFarewell = false
@@ -136,6 +139,13 @@ struct SpiritDetailView: View {
             }
             .foregroundStyle(.ink)
         }
+        .fullScreenCover(isPresented: $showingScan) {
+            ObjectScanView(spiritID: spirit.id) { fileName in
+                spirit.scanFileName = fileName
+                try? modelContext.save()
+                mode = .scan
+            }
+        }
         .sheet(isPresented: $showingRelay, onDismiss: renderShareImage) {
             RelaySendView(spirit: spirit)
         }
@@ -151,10 +161,18 @@ struct SpiritDetailView: View {
     /// 解码好的立牌图（后台解码一次并缓存）
     @State private var figureImage: UIImage?
 
+    /// LiDAR 扫描的原物模型（文件还在才算）
+    private var scanURL: URL? {
+        guard let name = spirit.scanFileName else { return nil }
+        let url = ObjectScanModel.url(forScan: name)
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+
     private var availableModes: [ArtMode] {
         ArtMode.allCases.filter { mode in
             switch mode {
-            case .standee: figureImage != nil
+            case .standee, .figurine: figureImage != nil
+            case .scan: scanURL != nil
             case .painting: true
             case .original: spirit.stickerImageData != nil
             }
@@ -172,6 +190,17 @@ struct SpiritDetailView: View {
                             .padding(.top, 12)
                             .popoverTip(standeeTip)
                             .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                    }
+                case .figurine:
+                    if let figureImage {
+                        FigurineView(source: .figurine(figureImage, key: "\(spirit.id.uuidString)-\(spirit.figureImageData?.count ?? 0)"),
+                                     name: spirit.name)
+                            .transition(.opacity)
+                    }
+                case .scan:
+                    if let scanURL {
+                        FigurineView(source: .scan(scanURL), name: spirit.name)
+                            .transition(.opacity)
                     }
                 case .painting:
                     SpiritArtView(data: spirit.spiritImageData)
@@ -214,7 +243,19 @@ struct SpiritDetailView: View {
                     ForEach(availableModes) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
-                .frame(maxWidth: 240)
+                .frame(maxWidth: CGFloat(availableModes.count) * 64)
+            }
+
+            // 带 LiDAR 的机型：可以把还在身边的原物扫描成精细的 3D 模型
+            if ObjectScanView.isSupported && !spirit.isReleased && scanURL == nil {
+                Button {
+                    showingScan = true
+                } label: {
+                    Label("用 LiDAR 扫描原物，生成精细 3D", systemImage: "cube.transparent")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.glass)
+                .foregroundStyle(.ink)
             }
         }
         .animation(.smooth(duration: 0.45), value: mode)

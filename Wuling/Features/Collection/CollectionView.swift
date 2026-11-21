@@ -225,7 +225,16 @@ struct CollectionView: View {
                 .accessibilityHint("收下身边的人传给你的物灵")
             }
         }
+        .padding(.top, 28)
         .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        // 按钮下面垫一层渐隐的纸色，免得盖住图鉴卡片上的字
+        .background {
+            LinearGradient(colors: [Color.paper.opacity(0), Color.paper.opacity(0.92), Color.paper],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+        }
     }
 }
 

@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// 图鉴首页顶部：一幅会随时辰、节气变化的山水，
-/// 月亮（或太阳）前悬着一片 Liquid Glass 的"月洞门"，右侧竖排今天的节气与物候。
+/// 图鉴首页顶部：一幅会随时辰、节气变化的山水，右侧竖排今天的节气与物候（Liquid Glass 题签）。
 ///
 /// 送别的物灵化作水面的河灯，传出去的物灵化作远天的鸿雁。每个人的园林都不一样。
 struct LandscapeHeader: View {
@@ -26,13 +25,6 @@ struct LandscapeHeader: View {
         return GeometryReader { geo in
             ZStack(alignment: .topLeading) {
                 LivingLandscape(scene: scene)
-
-                // 月洞门：一片圆形的透明玻璃悬在日月前，折射后面的山水
-                Color.clear
-                    .frame(width: 92, height: 92)
-                    .glassEffect(.clear, in: Circle())
-                    .position(scene.celestialPosition(in: geo.size))
-                    .allowsHitTesting(false)
 
                 // 标题
                 VStack(alignment: .leading, spacing: 8) {

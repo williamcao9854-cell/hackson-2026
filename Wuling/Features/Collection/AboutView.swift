@@ -31,8 +31,10 @@ struct AboutView: View {
                         Text("首页的山水会随着时辰和节气变化：清晨、白天、黄昏、夜里各有天色；冬雪、春花、秋叶、夏夜萤火，按真实的二十四节气流转。")
                         row("flame", "每送别一个物灵，水面上就多一盏河灯")
                         row("bird", "每传出一个物灵，远天就多一只鸿雁")
-                        row("circle", "日月前悬着的那片玻璃，是园林里的月洞门")
+                        row("calendar", "右上角的玻璃题签，写着今天的节气和物候")
                         row("figure.stand", "同住的物灵以亚克力立牌的样子站在岸边，可以拖动转一转")
+                        row("cube", "「手办」：Core ML 深度模型一键把物灵塑成 3D，还能用 AR 摆在桌上")
+                        row("cube.transparent", "「扫描」：带 LiDAR 的机型可以用 Object Capture 把原物扫描成精细 3D")
                     }
 
                     block(title: "隐私") {

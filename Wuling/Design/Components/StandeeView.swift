@@ -81,79 +81,89 @@ struct StandeeView: View {
         let w: CGFloat = size.width
         let h: CGFloat = size.height
         let turn = CGFloat(sin(yaw * Double.pi / 180))
-        // 每层剪影错开的距离：转得越多，侧边露得越多
-        let step: CGFloat = -turn * max(0.8, w / 170)
-        // 详情页的大立牌 7 层；园林里的小立牌 4 层就够了，省电
-        let layers = interactive ? 7 : 4
-        let shadowWidth: CGFloat = w * 0.62 * (1 - abs(turn) * 0.2)
-        let shadowHeight: CGFloat = max(6, h * 0.05)
-        let shadowBlur: CGFloat = max(3, w / 40)
-        let shadowX: CGFloat = -turn * w * 0.05
-        let shadowY: CGFloat = h * 0.005
-        let baseWidth: CGFloat = w * 0.6
-        let baseHeight: CGFloat = max(8, h * 0.07)
-        let bodyHeight: CGFloat = h * 0.84
-        let hopLift: CGFloat = hop ? -h * 0.04 : 0
-        let hopScale: CGFloat = hop ? 1.06 : 1
-        let bottomPadding: CGFloat = max(4, h * 0.035)
-        let shine = CGFloat(yaw / 45)
-        let shineStart = UnitPoint(x: 0.05 + shine, y: 0)
-        let shineEnd = UnitPoint(x: 0.45 + shine, y: 1)
+        // 亚克力厚度：转得越多，侧边露得越多
+        let layers = interactive ? 9 : 5
+        let step: CGFloat = -turn * max(1.0, w / 130)
+
+        let baseWidth: CGFloat = w * 0.66
+        let baseHeight: CGFloat = max(10, h * 0.11)
+        let footY: CGFloat = h - baseHeight * 0.55          // 立牌的脚落在底座中间偏后
+        let bodyHeight: CGFloat = footY * 0.97
+        let shadowWidth: CGFloat = baseWidth * 1.15
+        let shadowHeight: CGFloat = baseHeight * 0.9
+        let hopLift: CGFloat = hop ? -h * 0.05 : 0
+        let hopScale: CGFloat = hop ? 1.05 : 1
+        let shine = CGFloat(yaw / 40)
+        let shineStart = UnitPoint(x: -0.1 + shine, y: 0)
+        let shineEnd = UnitPoint(x: 0.4 + shine, y: 1)
         let yawAngle = Angle.degrees(yaw)
         let pitchAngle = Angle.degrees(pitch)
 
-        return ZStack(alignment: .bottom) {
+        return ZStack(alignment: .top) {
             // 地上的影子
             Ellipse()
-                .fill(Color.black.opacity(0.18))
+                .fill(Color.black.opacity(0.16))
                 .frame(width: shadowWidth, height: shadowHeight)
-                .blur(radius: shadowBlur)
-                .offset(x: shadowX, y: shadowY)
+                .blur(radius: max(4, w / 28))
+                .offset(x: -turn * w * 0.06, y: h - shadowHeight * 0.75)
 
-            // 底座：大立牌用 Liquid Glass，园林里的小立牌用普通半透明，减轻渲染压力
-            if interactive {
-                Capsule()
-                    .fill(Color.white.opacity(0.18))
-                    .frame(width: baseWidth, height: baseHeight)
-                    .glassEffect(.regular, in: Capsule())
-            } else {
-                Capsule()
-                    .fill(Color.white.opacity(0.45))
-                    .overlay { Capsule().strokeBorder(Color.white.opacity(0.7), lineWidth: 0.5) }
-                    .frame(width: baseWidth, height: baseHeight)
+            // 椭圆玻璃底座：有一点透视，像真的放在桌上
+            ZStack {
+                if interactive {
+                    Ellipse()
+                        .fill(Color.white.opacity(0.12))
+                        .glassEffect(.regular, in: Ellipse())
+                } else {
+                    Ellipse()
+                        .fill(Color.white.opacity(0.5))
+                }
+                Ellipse()
+                    .strokeBorder(Color.white.opacity(0.85), lineWidth: 0.8)
+                    .padding(1)
+                // 底座上的倒影
+                image
+                    .scaleEffect(x: 1, y: -1)
+                    .frame(height: bodyHeight * 0.35)
+                    .opacity(0.14)
+                    .blur(radius: 1.5)
+                    .mask(Ellipse())
             }
+            .frame(width: baseWidth, height: baseHeight)
+            .offset(y: h - baseHeight)
 
             // 立牌本体
             ZStack {
                 ForEach(0..<layers, id: \.self) { i in
-                    let edge: Color = i == 0 ? Color(white: 0.76) : Color(white: 0.95)
+                    // 越靠后的层越暗：亚克力的侧面
+                    let depth: Double = Double(layers - i) / Double(layers)
+                    let tone: Double = 0.97 - depth * 0.22
                     let shift: CGFloat = step * CGFloat(layers - i)
                     silhouette
-                        .foregroundStyle(edge)
-                        .offset(x: shift)
+                        .foregroundStyle(Color(white: tone))
+                        .offset(x: shift, y: -abs(shift) * 0.15)
                 }
                 image
-                // 亚克力高光：随角度扫过
+                    .shadow(color: .black.opacity(0.15), radius: 0.6)
+                // 高光：随角度扫过
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .white.opacity(0.6), location: 0.5),
+                        .init(color: .white.opacity(0.65), location: 0.5),
                         .init(color: .clear, location: 1),
                     ],
                     startPoint: shineStart,
                     endPoint: shineEnd
                 )
                 .mask { image }
-                .opacity(0.4)
+                .opacity(0.42)
             }
-            .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
-            .frame(height: bodyHeight)
+            // 宽的物品（椅子、电脑）会被宽度限制而变矮：贴底对齐，脚始终落在底座上
+            .frame(width: w * 0.9, height: bodyHeight, alignment: .bottom)
             .scaleEffect(hopScale, anchor: .bottom)
-            .offset(y: hopLift)
-            .rotation3DEffect(yawAngle, axis: (x: 0, y: 1, z: 0), anchor: .bottom, perspective: 0.45)
-            .rotation3DEffect(pitchAngle, axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.45)
-            .padding(.bottom, bottomPadding)
+            .offset(y: footY - bodyHeight + hopLift)
+            .rotation3DEffect(yawAngle, axis: (x: 0, y: 1, z: 0), anchor: .bottom, perspective: 0.5)
+            .rotation3DEffect(pitchAngle, axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
         }
-        .frame(width: w, height: h)
+        .frame(width: w, height: h, alignment: .top)
     }
 }
