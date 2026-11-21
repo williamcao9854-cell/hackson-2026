@@ -60,6 +60,23 @@ enum ImageProcessing {
         return Cutout(subject: image, sticker: fallback, foundSubject: false)
     }
 
+    /// 从生成的物灵插画里抠出物灵本身（带白边），做成立牌。
+    /// 插画的背景是素净的和纸，Vision 抠图非常干净。长边限制在 900px。
+    static func figure(fromArt data: Data) -> Data? {
+        guard let art = UIImage(data: data) else { return nil }
+        let cutout = liftSubject(from: normalized(art, maxDimension: 1200))
+        guard cutout.foundSubject else { return nil }
+        let size = cutout.sticker.size
+        let scale = min(1, 900 / max(size.width, size.height))
+        guard scale < 1 else { return cutout.sticker.pngData() }
+        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            cutout.sticker.draw(in: CGRect(origin: .zero, size: target))
+        }.pngData()
+    }
+
     /// 给透明主体加一圈白边，像一张真正的贴纸。
     private static func makeSticker(from subject: CIImage) -> UIImage? {
         let extent = subject.extent

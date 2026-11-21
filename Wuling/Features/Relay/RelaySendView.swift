@@ -77,7 +77,14 @@ struct RelaySendView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) { actions }
-            .background(PaperBackground())
+            .background(AmbientBackdrop(intensity: 0.4, geese: sent ? 1 : 0))
+            .overlay(alignment: .top) {
+                if sent {
+                    GooseFlight(leftToRight: true)
+                        .frame(height: 160)
+                        .padding(.top, 40)
+                }
+            }
             .foregroundStyle(.ink)
             .navigationTitle("传给下一位")
             .navigationBarTitleDisplayMode(.inline)
@@ -153,7 +160,7 @@ struct RelaySendView: View {
     private var actions: some View {
         VStack(spacing: 10) {
             if sent {
-                Label("已传出。愿它在新主人那里也被好好珍惜。", systemImage: "checkmark.seal")
+                Label("已传出。它化作一只鸿雁，飞向新主人。", systemImage: "bird")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.vermilion)
                     .padding(.vertical, 12)

@@ -46,6 +46,8 @@ struct SpiritSeed: Sendable {
     var memory: String
     /// 用户勾选的岁月痕迹
     var wearMarks: [WearMark] = []
+    /// 端侧大模型看到的外观描述（英文，不含照片本身）
+    var appearance: String = ""
 }
 
 /// 物灵的"身份证"。

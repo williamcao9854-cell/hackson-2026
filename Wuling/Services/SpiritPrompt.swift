@@ -2,7 +2,8 @@ import Foundation
 
 /// 把物灵的原料拼成给图像模型的提示词。
 ///
-/// 隐私：只使用物品类别、用户给它起的称呼、颜色、陪伴时长、岁月痕迹。
+/// 隐私：只使用物品类别、用户给它起的称呼、颜色、陪伴时长、岁月痕迹，
+/// 以及端侧模型在手机上看图后写下的一句外观描述。
 /// 用户的照片和记忆文字都不会出现在这里。
 enum SpiritPrompt {
     /// 所有物灵共用的画风，保证图鉴里的每一张都像出自同一位画师之手。
@@ -25,6 +26,10 @@ enum SpiritPrompt {
         The spirit's body is clearly formed from the \(object) itself, so anyone can recognize what it was, \
         with small expressive eyes and tiny limbs that feel natural to its shape.
         """)
+        let look = seed.appearance.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !look.isEmpty {
+            lines.append("The real object looks like this, keep its recognizable features: \(look).")
+        }
         lines.append("Main colors: \(colorPhrase(for: seed)).")
         if !seed.wearMarks.isEmpty {
             lines.append("Visible marks of its long life, drawn with affection: \(seed.wearMarks.map(\.promptPhrase).joined(separator: ", ")).")

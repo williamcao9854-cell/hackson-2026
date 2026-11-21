@@ -3,7 +3,7 @@
 > 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手；或者，把它和它的故事一起传给下一个人。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
-技术栈：Swift · SwiftUI · Core ML · Vision · Foundation Models · AMD 图像生成 API
+技术栈：Swift · SwiftUI · Liquid Glass · Core ML · Vision · Foundation Models（端侧看图） · TipKit · AMD 图像生成 API
 
 - 📐 [开发计划](docs/PLAN.md)：设计调研、设计语言「和纸与朱印」、技术方案
 - 💡 [创意方案 v4](docs/IDEAS-v4.md)：物灵是从这里选出来的
@@ -95,10 +95,11 @@ gh auth setup-git
 Wuling/
 ├── App/                    入口、预览数据
 ├── Design/                 设计系统：颜色、字体、和纸背景
-│   ├── Components/         竖排文字、朱印、贴纸、长按送别、消散粒子
-│   └── Landscape/          首页会呼吸的水墨山水（时辰、节气、河灯、鸿雁）
+│   ├── Components/         竖排文字、朱印、贴纸、亚克力立牌、长按送别、河灯、鸿雁、TipKit 提示
+│   └── Landscape/          会呼吸的水墨山水（时辰、节气、河灯、鸿雁），以及各页面的淡山水背景
 ├── Features/
-│   ├── Collection/         图鉴首页、物灵详情、分享卡片、关于
+│   ├── Collection/         园林首页、图鉴、物灵详情（立牌/画作/原貌）、分享卡片、关于
+│   ├── Onboarding/         第一次打开的三页引导
 │   ├── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
 │   └── Relay/              传灵：盖章传出、接收物灵
 ├── Models/                 物灵（SwiftData）、陪伴时长、传灵章节与胶囊

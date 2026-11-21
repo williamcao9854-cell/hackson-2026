@@ -32,6 +32,13 @@ struct StoryView: View {
                         .font(.system(size: 13))
                         .foregroundStyle(.inkSecondary)
 
+                    if model.recognizedByModel {
+                        Label("Apple 智能在手机上认出了它", systemImage: "apple.intelligence")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.inkSecondary)
+                            .padding(.top, 4)
+                    }
+
                     let others = model.candidates.isEmpty && model.needsNaming
                         ? Self.commonKinds
                         : model.candidates.filter { $0.chinese != model.objectName }

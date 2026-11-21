@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import TipKit
 
 /// 首页：物灵图鉴。
 struct CollectionView: View {
@@ -9,6 +10,9 @@ struct CollectionView: View {
     @State private var showingAbout = false
     @State private var incoming: IncomingSpirit?
     @State private var incomingError: String?
+    @State private var showingOnboarding = false
+    @AppStorage("wuling.onboarded") private var onboarded = false
+    private let gardenTip = GardenTip()
     @Namespace private var zoom
 
     /// 隔空投送或从文件 App 打开的物灵
@@ -44,11 +48,20 @@ struct CollectionView: View {
             GeometryReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        LandscapeHeader(topInset: proxy.safeAreaInsets.top, lanterns: releasedCount, geese: relayedCount)
-                            .frame(height: proxy.safeAreaInsets.top + 300)
+                        GardenHero(topInset: proxy.safeAreaInsets.top,
+                                   living: spirits.filter { !$0.isReleased },
+                                   lanterns: releasedCount, geese: relayedCount)
+                            .frame(height: max(520, proxy.size.height * 0.74))
 
-                        countsRow
+                        legendRow
                             .padding(.horizontal, Metrics.gutter)
+
+                        if !spirits.isEmpty {
+                            TipView(gardenTip)
+                                .tipBackground(Color.card)
+                                .padding(.horizontal, Metrics.gutter)
+                                .padding(.top, 14)
+                        }
 
                         if spirits.isEmpty {
                             EmptyCollectionView()
@@ -102,6 +115,11 @@ struct CollectionView: View {
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingView()
+            }
+            .onAppear { if !onboarded { showingOnboarding = true } }
+            .onChange(of: onboarded) { _, done in if !done { showingOnboarding = true } }
             .fullScreenCover(item: $incoming) { item in
                 ArrivalView(capsule: item.capsule)
             }
@@ -139,26 +157,36 @@ struct CollectionView: View {
     private var relayedCount: Int { spirits.filter(\.isRelayed).count }
     private var releasedCount: Int { spirits.count - livingCount - relayedCount }
 
-    /// 山水下方：数量，以及河灯、鸿雁的含义
+    /// 园林下方的图例：岸边 = 同住，河灯 = 送别，鸿雁 = 传出。点一下筛选下面的图鉴。
     @ViewBuilder
-    private var countsRow: some View {
+    private var legendRow: some View {
         if !spirits.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(relayedCount > 0
-                     ? "同住 \(livingCount)　·　已送别 \(releasedCount)　·　已传出 \(relayedCount)"
-                     : "同住 \(livingCount)　·　已送别 \(releasedCount)")
-                    .font(.wlCaption)
-                    .monospacedDigit()
-                if releasedCount > 0 || relayedCount > 0 {
-                    Text([releasedCount > 0 ? "水上的河灯，是你送别的物灵" : nil,
-                          relayedCount > 0 ? "远天的鸿雁，是传出去的物灵" : nil]
-                        .compactMap { $0 }
-                        .joined(separator: "；"))
-                        .font(.system(size: 12))
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    legendChip(symbol: "figure.stand", text: "岸边 · 同住", count: livingCount, filter: .living)
+                    legendChip(symbol: "flame", text: "河灯 · 送别", count: releasedCount, filter: .released)
+                    legendChip(symbol: "bird", text: "鸿雁 · 传出", count: relayedCount, filter: .relayed)
                 }
             }
-            .foregroundStyle(.inkSecondary)
         }
+    }
+
+    private func legendChip(symbol: String, text: String, count: Int, filter target: Filter) -> some View {
+        Button {
+            withAnimation(.smooth) { filter = filter == target ? .all : target }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                Text(text).font(.system(size: 12, weight: .medium))
+                Text("\(count)").font(.system(size: 12, weight: .semibold).monospacedDigit())
+            }
+            .foregroundStyle(filter == target ? Color.vermilion : Color.ink)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: Capsule())
+        .accessibilityLabel("\(text)，\(count) 个")
     }
 
     private var encounterButton: some View {

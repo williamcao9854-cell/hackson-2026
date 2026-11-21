@@ -11,6 +11,12 @@ struct CaptureView: View {
     @State private var shutterCount = 0
     @State private var scanPhase: CGFloat = -1
     @State private var isCapturing = false
+    @State private var layerBox = PreviewLayerBox()
+    @State private var zoom: CGFloat = 1
+    @State private var pinchStartZoom: CGFloat?
+    @State private var lensPresets: [CGFloat] = []
+    @State private var focusPoint: CGPoint?
+    @State private var focusTick = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +33,11 @@ struct CaptureView: View {
         }
         .task {
             status = await camera.start()
+            lensPresets = camera.lensPresets
+            zoom = 1
         }
+        .sensoryFeedback(.selection, trigger: lensPresets.firstIndex(of: zoom))
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: focusTick)
         .onDisappear { camera.stop() }
         .onChange(of: pickerItem) { _, item in
             guard let item else { return }
@@ -64,7 +74,9 @@ struct CaptureView: View {
         ZStack {
             switch status {
             case .running:
-                CameraPreview(session: camera.session)
+                CameraPreview(session: camera.session, layerBox: layerBox)
+                    .gesture(pinchToZoom)
+                    .gesture(tapToFocus)
             case .unavailable:
                 unavailableState
             case .idle:
@@ -83,6 +95,19 @@ struct CaptureView: View {
                 .stroke(Color.white.opacity(status == .running ? 0.9 : 0), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 .padding(26)
                 .allowsHitTesting(false)
+
+            if let focusPoint {
+                FocusSquare()
+                    .position(focusPoint)
+                    .id(focusTick)
+                    .allowsHitTesting(false)
+            }
+
+            if status == .running && !model.isProcessingPhoto && lensPresets.count > 1 {
+                lensControl
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 18)
+            }
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(3 / 4, contentMode: .fit)
@@ -92,6 +117,64 @@ struct CaptureView: View {
                 .strokeBorder(Color.hairline, lineWidth: 1)
         }
         .animation(.wlCalm, value: model.isProcessingPhoto)
+    }
+
+    // MARK: - 缩放与对焦
+
+    /// 镜头按钮：和系统相机一样，当前镜头显示实际倍率（例如 1.6×）
+    private var lensControl: some View {
+        GlassEffectContainer(spacing: 6) {
+            HStack(spacing: 6) {
+                ForEach(lensPresets, id: \.self) { preset in
+                    let isCurrent = currentPreset == preset
+                    Button {
+                        zoom = preset
+                        camera.setZoom(preset, smooth: true)
+                    } label: {
+                        Text(isCurrent ? Self.format(zoom) + "×" : Self.format(preset))
+                            .font(.system(size: isCurrent ? 13 : 12, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(isCurrent ? Color(red: 1, green: 0.84, blue: 0.4) : .white)
+                            .frame(width: isCurrent ? 40 : 32, height: isCurrent ? 40 : 32)
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.clear.interactive(), in: Circle())
+                    .accessibilityLabel("\(Self.format(preset)) 倍")
+                }
+            }
+            .padding(5)
+        }
+        .animation(.smooth(duration: 0.25), value: currentPreset)
+    }
+
+    /// 当前倍率落在哪个镜头档位（取不大于当前倍率的最大档位）
+    private var currentPreset: CGFloat? {
+        lensPresets.last { zoom >= $0 - 0.05 } ?? lensPresets.first
+    }
+
+    private static func format(_ value: CGFloat) -> String {
+        if value < 1 { return String(format: "%.1f", value).replacingOccurrences(of: "0.", with: ".") }
+        return value.truncatingRemainder(dividingBy: 1) < 0.05 ? String(Int(value.rounded())) : String(format: "%.1f", value)
+    }
+
+    private var pinchToZoom: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                if pinchStartZoom == nil { pinchStartZoom = zoom }
+                let target = (pinchStartZoom ?? 1) * value.magnification
+                zoom = max(camera.minDisplayZoom, min(target, camera.maxDisplayZoom))
+                camera.setZoom(zoom, smooth: false)
+            }
+            .onEnded { _ in pinchStartZoom = nil }
+    }
+
+    private var tapToFocus: some Gesture {
+        SpatialTapGesture()
+            .onEnded { value in
+                guard let devicePoint = layerBox.devicePoint(for: value.location) else { return }
+                camera.focus(at: devicePoint)
+                focusPoint = value.location
+                focusTick += 1
+            }
     }
 
     private var unavailableState: some View {
@@ -224,5 +307,24 @@ private struct ViewfinderCorners: Shape {
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
         path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - length))
         return path
+    }
+}
+
+/// 轻点对焦时出现的小方框：先放大再收拢，然后淡出
+private struct FocusSquare: View {
+    /// 0 刚出现（偏大）→ 1 收拢 → 2 淡出
+    @State private var phase = 0
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 4, style: .continuous)
+            .stroke(Color(red: 1, green: 0.84, blue: 0.4), lineWidth: 1.5)
+            .frame(width: 70, height: 70)
+            .scaleEffect(phase == 0 ? 1.35 : 1)
+            .opacity(phase == 2 ? 0 : 1)
+            .task {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { phase = 1 }
+                try? await Task.sleep(for: .seconds(1.1))
+                withAnimation(.easeOut(duration: 0.4)) { phase = 2 }
+            }
     }
 }

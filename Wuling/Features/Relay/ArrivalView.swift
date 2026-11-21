@@ -20,7 +20,11 @@ struct ArrivalView: View {
 
     var body: some View {
         ZStack {
-            PaperBackground()
+            AmbientBackdrop(intensity: 0.55, geese: 1)
+            GooseFlight(leftToRight: false)
+                .frame(height: 220)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 30)
 
             ScrollView {
                 VStack(spacing: 0) {

@@ -24,6 +24,10 @@ final class EncounterModel {
     var candidates: [ObjectKind] = []
     /// 识别没把握时为 true：名字留空，请用户告诉我们它是什么
     var needsNaming = false
+    /// 端侧大模型看图写下的外观描述（会写进生成提示词）
+    var appearance = ""
+    /// 是否由端侧大模型认出（界面上显示一个小标记）
+    var recognizedByModel = false
     var palette: [RGB] = []
 
     // 讲讲它
@@ -35,6 +39,8 @@ final class EncounterModel {
     // 唤醒结果
     var profile: SpiritProfile?
     var spiritImageData: Data?
+    /// 从插画里抠出的物灵，用来做立牌
+    var figureImageData: Data?
     var isPlaceholderArt = false
     var notice: String?
 
@@ -77,6 +83,8 @@ final class EncounterModel {
         object = .unknown
         candidates = []
         needsNaming = false
+        appearance = ""
+        recognizedByModel = false
         palette = []
         objectName = ""
         wearMarks = []
@@ -101,15 +109,34 @@ final class EncounterModel {
             let scene = cutout.foundSubject ? normalized.cgImage : nil
             let recognition = subject.map { ObjectRecognizer.recognize(subject: $0, scene: scene) }
             let palette = ImageProcessing.dominantColors(of: cutout.foundSubject ? cutout.subject : normalized)
-            return (normalized, cutout, recognition, palette)
+            return (normalized, cutout, recognition, palette, subject)
         }.value
+
+        // 优先让端侧大模型看图（iOS 27 起）；不支持时用上面分类模型的结果
+        let seen: OnDeviceVision.Seen?
+        if let subject = processed.4 {
+            seen = await OnDeviceVision.identify(subject)
+        } else {
+            seen = nil
+        }
 
         photo = processed.0
         cutout = processed.1
-        object = processed.2?.best ?? .unknown
-        candidates = processed.2?.candidates ?? []
         palette = processed.3
-        needsNaming = !(processed.2?.isConfident ?? false)
+        let classifierCandidates = processed.2?.candidates ?? []
+        if let seen {
+            object = seen.kind
+            appearance = seen.appearance
+            recognizedByModel = true
+            needsNaming = false
+            candidates = [seen.kind] + classifierCandidates.filter { $0.chinese != seen.kind.chinese }
+        } else {
+            object = processed.2?.best ?? .unknown
+            appearance = ""
+            recognizedByModel = false
+            needsNaming = !(processed.2?.isConfident ?? false)
+            candidates = classifierCandidates
+        }
         objectName = needsNaming ? "" : object.chinese
         isProcessingPhoto = false
 
@@ -128,7 +155,9 @@ final class EncounterModel {
             palette: palette,
             companionship: companionship,
             memory: memory,
-            wearMarks: WearMark.allCases.filter { wearMarks.contains($0) }
+            wearMarks: WearMark.allCases.filter { wearMarks.contains($0) },
+            // 用户把名字改成别的东西时，模型看到的外观可能已经不对应了，就不用它
+            appearance: kind.chinese == object.chinese ? appearance : ""
         )
     }
 
@@ -155,8 +184,15 @@ final class EncounterModel {
             try? await Task.sleep(for: .seconds(minimum - elapsed))
         }
 
+        // 从插画里抠出物灵，做成立牌（插画背景是素净的和纸，抠起来很干净）
+        let finalArt = imageData
+        let figure: Data? = await Task.detached(priority: .userInitiated) {
+            finalArt.flatMap(ImageProcessing.figure(fromArt:))
+        }.value
+
         self.profile = profile
         self.spiritImageData = imageData
+        self.figureImageData = figure
         self.isPlaceholderArt = placeholder
         self.notice = art.notice
         withAnimation(.wlCalm) { stage = .reveal }
@@ -191,6 +227,7 @@ final class EncounterModel {
             stickerImageData: sticker?.pngData(),
             isPlaceholderArt: isPlaceholderArt
         )
+        spirit.figureImageData = figureImageData
         if let note { spirit.release(note: note) }
         context.insert(spirit)
         try? context.save()

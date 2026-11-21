@@ -1,10 +1,13 @@
 import SwiftUI
+import TipKit
 
 /// ⑤ 初见：物灵卡揭晓。插画从朦胧中显现，名字一个字一个字竖着写出来。
 struct RevealView: View {
     var model: EncounterModel
     var onFarewell: () -> Void
     var onKeep: () -> Void
+    var onRelay: () -> Void
+    private let renameTip = RenameTip()
 
     @State private var cardVisible = false
     @State private var artFocused = false
@@ -38,13 +41,13 @@ struct RevealView: View {
                         .padding(.top, 14)
                         .opacity(detailsVisible ? 1 : 0)
                 }
+
+                actions
+                    .padding(.top, 28)
+                    .opacity(detailsVisible ? 1 : 0)
+                    .offset(y: detailsVisible ? 0 : 12)
             }
-            .padding(.bottom, 24)
-        }
-        .safeAreaInset(edge: .bottom) {
-            actions
-                .opacity(detailsVisible ? 1 : 0)
-                .offset(y: detailsVisible ? 0 : 12)
+            .padding(.bottom, 32)
         }
         .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: revealedCharacters)
         .alert("给它改个名字", isPresented: $renaming) {
@@ -79,6 +82,7 @@ struct RevealView: View {
                         }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("轻点可以改名")
+                        .popoverTip(renameTip)
                 }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -107,35 +111,49 @@ struct RevealView: View {
         .shadow(color: .black.opacity(0.08), radius: 24, y: 14)
     }
 
+    /// 三种去处，每一种都说清楚意味着什么
     private var actions: some View {
-        VStack(spacing: 10) {
-            GlassEffectContainer(spacing: 12) {
-                HStack(spacing: 12) {
-                    Button(action: onKeep) {
-                        Text("留它同住")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.glass)
-                    .foregroundStyle(.ink)
-
-                    Button(action: onFarewell) {
-                        Text("送别它")
-                            .font(.system(size: 16, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .tint(.vermilion)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("它接下来去哪里？").font(.wlHeadline)
+            GlassEffectContainer(spacing: 10) {
+                VStack(spacing: 10) {
+                    choice(seal: "同住", symbol: "figure.stand", title: "留它同住",
+                           detail: "东西还留在身边，它会住在你园林的岸边", prominent: false, action: onKeep)
+                    choice(seal: "送别", symbol: "flame", title: "送别它",
+                           detail: "准备放手了。道一声谢，它化作一盏河灯", prominent: true, action: onFarewell)
+                    choice(seal: "传灵", symbol: "bird", title: "传给别人",
+                           detail: "把东西送人时，物灵带着故事一起过去", prominent: false, action: onRelay)
                 }
             }
-            Text("送别之后，就可以安心放手了。物灵会替你记住它。")
-                .font(.system(size: 12))
-                .foregroundStyle(.inkSecondary)
         }
         .padding(.horizontal, Metrics.gutter)
-        .padding(.bottom, 8)
+    }
+
+    private func choice(seal: String, symbol: String, title: String, detail: String, prominent: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                SealStamp(text: seal, size: 38, rotation: .degrees(-6), style: prominent ? .yin : .yang)
+                VStack(alignment: .leading, spacing: 3) {
+                    Label(title, systemImage: symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                    Text(detail)
+                        .font(.system(size: 13))
+                        .opacity(0.75)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+                    .opacity(0.5)
+            }
+            .foregroundStyle(.ink)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(prominent ? .regular.tint(Color.vermilion.opacity(0.18)).interactive() : .regular.interactive(),
+                     in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func playReveal() async {
@@ -150,5 +168,7 @@ struct RevealView: View {
             try? await Task.sleep(for: .milliseconds(380))
         }
         withAnimation(.wlCalm) { detailsVisible = true }
+        try? await Task.sleep(for: .milliseconds(600))
+        RenameTip.isReady = true
     }
 }

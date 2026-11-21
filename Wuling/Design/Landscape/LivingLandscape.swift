@@ -6,7 +6,7 @@ struct LivingLandscape: View {
     var scene: LandscapeScene
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var motion = MotionParallax()
+    private let motion = MotionParallax.shared
     @State private var start = Date.now
 
     var body: some View {
@@ -22,13 +22,18 @@ struct LivingLandscape: View {
     }
 }
 
-/// 读取设备倾斜，平滑后给山水做景深错动。
+/// 读取设备倾斜，平滑后给山水、立牌做景深错动。
+/// 全 App 共用一个 CMMotionManager（Apple 建议只创建一个），用引用计数开关。
 /// 不是 @Observable：画布每帧都会重绘，直接读最新值即可，避免每次更新都触发界面刷新。
 final class MotionParallax {
+    static let shared = MotionParallax()
+
     private(set) var tilt: CGSize = .zero
     private let manager = CMMotionManager()
+    private var users = 0
 
     func start() {
+        users += 1
         guard manager.isDeviceMotionAvailable, !manager.isDeviceMotionActive else { return }
         manager.deviceMotionUpdateInterval = 1.0 / 30
         manager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
@@ -41,6 +46,7 @@ final class MotionParallax {
     }
 
     func stop() {
-        manager.stopDeviceMotionUpdates()
+        users = max(0, users - 1)
+        if users == 0 { manager.stopDeviceMotionUpdates() }
     }
 }

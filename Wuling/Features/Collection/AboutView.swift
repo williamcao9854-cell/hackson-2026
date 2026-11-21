@@ -3,6 +3,7 @@ import SwiftUI
 /// 关于物灵：灵感、隐私、技术。路演时也可以直接打开给评委看。
 struct AboutView: View {
     @Environment(\.dismiss) private var dismiss
+    @AppStorage("wuling.onboarded") private var onboarded = true
 
     var body: some View {
         NavigationStack {
@@ -31,6 +32,7 @@ struct AboutView: View {
                         row("flame", "每送别一个物灵，水面上就多一盏河灯")
                         row("bird", "每传出一个物灵，远天就多一只鸿雁")
                         row("circle", "日月前悬着的那片玻璃，是园林里的月洞门")
+                        row("figure.stand", "同住的物灵以亚克力立牌的样子站在岸边，可以拖动转一转")
                     }
 
                     block(title: "隐私") {
@@ -41,7 +43,8 @@ struct AboutView: View {
 
                     block(title: "技术") {
                         row("viewfinder", "Vision 主体抠图")
-                        row("cpu", "Core ML · MobileNetV2 设备端物品识别")
+                        row("eye", "Foundation Models 端侧看图识物（iOS 27，支持的机型）")
+                        row("cpu", "Core ML · FastViT 设备端物品识别")
                         row("apple.intelligence", "Foundation Models 设备端起名（支持 Apple 智能的设备）")
                         row("paintbrush.pointed", "AMD 图像生成 API 绘制物灵")
                         HStack(spacing: 8) {
@@ -55,6 +58,19 @@ struct AboutView: View {
                         .padding(.top, 4)
                     }
 
+                    Button {
+                        dismiss()
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(500))
+                            onboarded = false
+                        }
+                    } label: {
+                        Label("再看一次新手引导", systemImage: "book.pages")
+                            .font(.system(size: 15, weight: .medium))
+                    }
+                    .buttonStyle(.glass)
+                    .foregroundStyle(.ink)
+
                     Text("hackson-2026 · Track 1 · Apple Human-Centered Care")
                         .font(.wlCaption)
                         .foregroundStyle(.inkSecondary)
@@ -62,7 +78,7 @@ struct AboutView: View {
                 .padding(Metrics.gutter)
                 .padding(.bottom, 24)
             }
-            .background(PaperBackground())
+            .background(AmbientBackdrop(intensity: 0.35))
             .foregroundStyle(.ink)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

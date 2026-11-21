@@ -1,13 +1,22 @@
 import SwiftData
 import SwiftUI
+import TipKit
 
-/// 物灵详情：大图、竖排名字、它的故事、灵貌 ⇄ 原貌、分享。
+/// 物灵详情：立牌 / 画作 / 原貌三种看法、竖排名字、它的故事、分享。
 struct SpiritDetailView: View {
     @Bindable var spirit: Spirit
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    @State private var showOriginal = false
+    /// 查看方式
+    enum ArtMode: String, CaseIterable, Identifiable {
+        case standee = "立牌"
+        case painting = "画作"
+        case original = "原貌"
+        var id: String { rawValue }
+    }
+    @State private var mode: ArtMode = .standee
+    private let standeeTip = StandeeTip()
     @State private var showingFarewell = false
     @State private var showingRelay = false
     @State private var confirmingDelete = false
@@ -53,9 +62,14 @@ struct SpiritDetailView: View {
             }
             .padding(.bottom, 48)
         }
-        .background(PaperBackground())
+        .background(AmbientBackdrop(intensity: 0.45, lanterns: spirit.isReleased && !spirit.isRelayed ? 1 : 0,
+                                    geese: spirit.isRelayed ? 1 : 0))
         .foregroundStyle(.ink)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            FigureCache.ensureFigure(for: spirit, in: modelContext)
+            if figureImage == nil { mode = .painting }
+        }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if let shareImage {
@@ -100,7 +114,7 @@ struct SpiritDetailView: View {
         }
         .fullScreenCover(isPresented: $showingFarewell) {
             ZStack {
-                PaperBackground()
+                AmbientBackdrop(intensity: 0.5)
                 FarewellView(
                     sticker: spirit.stickerImageData.flatMap(UIImage.init(data:)),
                     spiritImageData: spirit.spiritImageData,
@@ -129,50 +143,80 @@ struct SpiritDetailView: View {
         }
     }
 
-    // MARK: - 插画（灵貌 / 原貌）
+    // MARK: - 立牌 / 画作 / 原貌
+
+    private var figureImage: UIImage? {
+        spirit.figureImageData.flatMap(UIImage.init(data:))
+    }
+
+    private var availableModes: [ArtMode] {
+        ArtMode.allCases.filter { mode in
+            switch mode {
+            case .standee: figureImage != nil
+            case .painting: true
+            case .original: spirit.stickerImageData != nil
+            }
+        }
+    }
 
     private var artwork: some View {
-        ZStack {
-            if showOriginal, let data = spirit.stickerImageData, let sticker = UIImage(data: data) {
-                StickerView(image: sticker, lifted: true)
-                    .padding(56)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
-            } else {
-                SpiritArtView(data: spirit.spiritImageData)
-                    .transition(.opacity)
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fit)
-        .background(Color.card)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .strokeBorder(Color.hairline, lineWidth: 1)
-        }
-        .overlay(alignment: .topTrailing) {
-            VerticalText(text: spirit.name, font: .wlSpiritName(40))
-                .foregroundStyle(.inkOnArt)
-                .padding(.top, 22)
-                .padding(.trailing, 22)
-                .opacity(showOriginal ? 0 : 1)
-        }
-        .overlay(alignment: .bottomLeading) {
-            if spirit.stickerImageData != nil {
-                Button {
-                    withAnimation(.smooth(duration: 0.45)) { showOriginal.toggle() }
-                } label: {
-                    Label(showOriginal ? "灵貌" : "原貌", systemImage: showOriginal ? "sparkles" : "photo")
-                        .font(.system(size: 13, weight: .semibold))
-                        .padding(.horizontal, 4)
+        VStack(spacing: 14) {
+            ZStack {
+                switch mode {
+                case .standee:
+                    if let figureImage {
+                        StandeeView(figure: figureImage)
+                            .padding(.horizontal, 28)
+                            .padding(.top, 12)
+                            .popoverTip(standeeTip)
+                            .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                    }
+                case .painting:
+                    SpiritArtView(data: spirit.spiritImageData)
+                        .background(Color.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .strokeBorder(Color.hairline, lineWidth: 1)
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            VerticalText(text: spirit.name, font: .wlSpiritName(40))
+                                .foregroundStyle(.inkOnArt)
+                                .padding(.top, 22)
+                                .padding(.trailing, 22)
+                        }
+                        .transition(.opacity)
+                case .original:
+                    if let data = spirit.stickerImageData, let sticker = UIImage(data: data) {
+                        StickerView(image: sticker, lifted: true)
+                            .padding(56)
+                            .background(Color.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    }
                 }
-                .buttonStyle(.glass)
-                .foregroundStyle(.ink)
-                .padding(14)
-                .accessibilityHint(showOriginal ? "查看物灵插画" : "查看物品原本的样子")
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .overlay(alignment: .topLeading) {
+                // 立牌模式下，名字竖排在左上，像立牌旁的题签
+                if mode == .standee {
+                    VerticalText(text: spirit.name, font: .wlSpiritName(30))
+                        .padding(.top, 8)
+                        .transition(.opacity)
+                }
+            }
+
+            if availableModes.count > 1 {
+                Picker("查看方式", selection: $mode) {
+                    ForEach(availableModes) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 240)
             }
         }
-        .sensoryFeedback(.selection, trigger: showOriginal)
+        .animation(.smooth(duration: 0.45), value: mode)
+        .sensoryFeedback(.selection, trigger: mode)
     }
 
     // MARK: - 信息

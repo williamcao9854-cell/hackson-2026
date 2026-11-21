@@ -47,6 +47,8 @@ final class Spirit {
 
     @Attribute(.externalStorage) var spiritImageData: Data?
     @Attribute(.externalStorage) var stickerImageData: Data?
+    /// 从插画里抠出的物灵（带白边），用于立牌和园林里的小人
+    @Attribute(.externalStorage) var figureImageData: Data?
     /// 插画是否为离线占位（没有连上图像 API 时）
     var isPlaceholderArt: Bool = false
 

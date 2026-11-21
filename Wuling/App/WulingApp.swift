@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import TipKit
 
 @main
 struct WulingApp: App {
@@ -7,6 +8,7 @@ struct WulingApp: App {
 
     init() {
         container = try! ModelContainer(for: Spirit.self)
+        try? Tips.configure([.displayFrequency(.immediate)])
         // 自动截图（tools/mac_build_report.sh）时带上 -demo-data，让图鉴里有内容可看
         if ProcessInfo.processInfo.arguments.contains("-demo-data") {
             PreviewData.seedIfEmpty(container.mainContext)

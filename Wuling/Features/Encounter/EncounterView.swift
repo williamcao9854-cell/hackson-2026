@@ -7,10 +7,17 @@ struct EncounterView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var model = EncounterModel()
     @State private var confirmingClose = false
+    @State private var relaySpirit: Spirit?
 
     var body: some View {
         ZStack {
-            PaperBackground()
+            if model.stage == .capture {
+                PaperBackground()
+            } else {
+                // 唤醒时山水最浓，其他步骤淡淡地铺在纸上
+                AmbientBackdrop(intensity: model.stage == .awakening ? 0.95 : 0.5)
+                    .transition(.opacity)
+            }
 
             Group {
                 switch model.stage {
@@ -26,6 +33,8 @@ struct EncounterView: View {
                     } onKeep: {
                         model.save(in: modelContext)
                         dismiss()
+                    } onRelay: {
+                        relaySpirit = model.save(in: modelContext)
                     }
                 case .farewell:
                     FarewellView(
@@ -69,6 +78,9 @@ struct EncounterView: View {
         }
         .foregroundStyle(.ink)
         .interactiveDismissDisabled(model.stage == .awakening || model.hasUnsavedSpirit)
+        .sheet(item: $relaySpirit, onDismiss: { dismiss() }) { spirit in
+            RelaySendView(spirit: spirit)
+        }
         .confirmationDialog("要放下这个物灵吗？", isPresented: $confirmingClose, titleVisibility: .visible) {
             Button("留它同住") {
                 model.save(in: modelContext)

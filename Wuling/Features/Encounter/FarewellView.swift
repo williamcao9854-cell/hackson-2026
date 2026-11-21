@@ -20,6 +20,7 @@ struct FarewellView: View {
     @State private var phase: Phase = .writing
     @State private var dissolveStart = Date.now
     @State private var stampLanded = false
+    @State private var lanternProgress: CGFloat = 0
     @FocusState private var noteFocused: Bool
 
     var body: some View {
@@ -94,6 +95,15 @@ struct FarewellView: View {
                 DissolveParticles(colors: particleColors, startDate: dissolveStart)
                     .frame(width: 320, height: 360)
             }
+
+            // 光点散尽后，化作一盏河灯，缓缓漂向园林的水面
+            if phase == .sealed {
+                LanternGlyph()
+                    .frame(width: 30, height: 30)
+                    .offset(x: lanternProgress * 150, y: 60 + lanternProgress * 210)
+                    .opacity(lanternProgress < 0.8 ? 1 : Double((1 - lanternProgress) / 0.2))
+                    .transition(.opacity)
+            }
         }
     }
 
@@ -138,7 +148,7 @@ struct FarewellView: View {
                 Text("「\(finalNote)」")
                     .font(.wlQuote)
                     .multilineTextAlignment(.center)
-                Text(WLFormat.date(.now))
+                Text("它化作一盏河灯，漂进了你的园林　·　\(WLFormat.date(.now))")
                     .font(.wlCaption)
                     .monospacedDigit()
                     .foregroundStyle(.inkSecondary)
@@ -173,6 +183,8 @@ struct FarewellView: View {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.62)) {
                 stampLanded = true
             }
+            try? await Task.sleep(for: .milliseconds(500))
+            withAnimation(.easeInOut(duration: 5)) { lanternProgress = 1 }
         }
     }
 }
