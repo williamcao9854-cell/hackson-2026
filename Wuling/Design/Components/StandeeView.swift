@@ -66,7 +66,9 @@ struct StandeeView: View {
     }
 
     private func standee(size: CGSize, yaw: Double, pitch: Double) -> some View {
+        // renderingMode 只能用在 Image 上，所以剪影要在 resizable / scaledToFit 之前设置
         let image = Image(uiImage: figure).resizable().scaledToFit()
+        let silhouette = Image(uiImage: figure).renderingMode(.template).resizable().scaledToFit()
         let w: CGFloat = size.width
         let h: CGFloat = size.height
         let turn = CGFloat(sin(yaw * Double.pi / 180))
@@ -109,8 +111,7 @@ struct StandeeView: View {
                 ForEach(0..<layers, id: \.self) { i in
                     let edge: Color = i == 0 ? Color(white: 0.76) : Color(white: 0.95)
                     let shift: CGFloat = step * CGFloat(layers - i)
-                    image
-                        .renderingMode(.template)
+                    silhouette
                         .foregroundStyle(edge)
                         .offset(x: shift)
                 }
