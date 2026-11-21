@@ -1,11 +1,10 @@
-# hackson-2026
+# 物灵 · Wuling
+
+> 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
 技术栈：Swift · SwiftUI · Core ML · AMD 图像生成 API
 
-## 方案
-
-- 🆕 **[创意方案 v4：小而美，给普通人的日常](docs/IDEAS-v4.md)**：调研了 Apple 获奖的小众精品 App，推荐「物灵」或「手影剧场」
-- [创意方案 v3](docs/IDEAS-v3.md)：6 个方向（偏公益）
-- [创意方案 v2](docs/IDEAS-v2.md)：3 个方向（偏公益）
-- [v1「说得出」](docs/PRODUCT.md)：已搁置
+- 📐 **[开发计划](docs/PLAN.md)**：设计调研、设计语言、技术方案、里程碑
+- 💡 [创意方案 v4](docs/IDEAS-v4.md)：物灵是从这里选出来的
+- 🗂️ 历史方案：[v3](docs/IDEAS-v3.md) · [v2](docs/IDEAS-v2.md) · [v1](docs/PRODUCT.md)
