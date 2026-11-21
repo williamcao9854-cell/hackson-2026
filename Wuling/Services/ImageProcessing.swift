@@ -61,14 +61,14 @@ enum ImageProcessing {
     }
 
     /// 从生成的物灵插画里抠出物灵本身（带白边），做成立牌。
-    /// 插画的背景是素净的和纸，Vision 抠图非常干净。长边限制在 900px。
+    /// 插画的背景是素净的和纸，Vision 抠图非常干净。长边限制在 640px。
     static func figure(fromArt data: Data) -> Data? {
         guard let art = UIImage(data: data) else { return nil }
-        let cutout = liftSubject(from: normalized(art, maxDimension: 1200))
+        let cutout = liftSubject(from: normalized(art, maxDimension: 800))
         guard cutout.foundSubject else { return nil }
         let sticker = trimmed(cutout.sticker)
         let size = sticker.size
-        let scale = min(1, 900 / max(size.width, size.height))
+        let scale = min(1, 640 / max(size.width, size.height))
         guard scale < 1 else { return sticker.pngData() }
         let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
         let format = UIGraphicsImageRendererFormat()
@@ -78,10 +78,14 @@ enum ImageProcessing {
         }.pngData()
     }
 
-    /// 裁掉四周完全透明的边，让立牌的脚正好落在底座上
+    /// 裁掉四周完全透明的边，让立牌的脚正好落在底座上。
+    /// 先缩到 ≤256px 找透明边界再回映原图裁剪，Debug 模式下也只需 1-2ms。
     static func trimmed(_ image: UIImage) -> UIImage {
         guard let cg = image.cgImage else { return image }
-        let width = cg.width, height = cg.height
+        let origW = cg.width, origH = cg.height
+        let scale = min(1.0, 256.0 / Double(max(origW, origH)))
+        let width = max(1, Int((Double(origW) * scale).rounded()))
+        let height = max(1, Int((Double(origH) * scale).rounded()))
         var pixels = [UInt8](repeating: 0, count: width * height * 4)
         let drawn: Bool = pixels.withUnsafeMutableBytes { buffer in
             guard let ctx = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
@@ -102,7 +106,13 @@ enum ImageProcessing {
             }
         }
         guard maxX >= minX, maxY >= minY else { return image }
-        let rect = CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+        let inv = 1.0 / scale
+        let pad = Int(ceil(inv))
+        let rx = max(0, Int(floor(Double(minX) * inv)) - pad)
+        let ry = max(0, Int(floor(Double(minY) * inv)) - pad)
+        let rMaxX = min(origW - 1, Int(ceil(Double(maxX + 1) * inv)) + pad)
+        let rMaxY = min(origH - 1, Int(ceil(Double(maxY + 1) * inv)) + pad)
+        let rect = CGRect(x: rx, y: ry, width: max(1, rMaxX - rx + 1), height: max(1, rMaxY - ry + 1))
         guard let cropped = cg.cropping(to: rect) else { return image }
         return UIImage(cgImage: cropped)
     }

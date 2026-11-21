@@ -18,7 +18,11 @@ enum ReliefModeler {
         return try? VNCoreMLModel(for: model)
     }()
 
-    private static let cache = NSCache<NSString, SCNNode>()
+    private static let cache: NSCache<NSString, SCNNode> = {
+        let c = NSCache<NSString, SCNNode>()
+        c.countLimit = 4
+        return c
+    }()
 
     /// 生成手办节点（已缓存则直接复制一份）。耗时操作，请在后台调用。
     static func figurineNode(for figure: UIImage, key: String) -> SCNNode? {
@@ -26,7 +30,7 @@ enum ReliefModeler {
         guard let canvas = renderCanvas(figure),
               let depth = estimateDepth(canvas.image),
               let mesh = ReliefMeshBuilder.build(.init(width: canvasWidth, height: canvasHeight,
-                                                       mask: canvas.mask, depth: depth))
+                                                       mask: canvas.mask, depth: depth), step: 3)
         else { return nil }
         let node = SCNNode(geometry: geometry(from: mesh, texture: canvas.image))
         node.name = "figurine"
@@ -180,7 +184,10 @@ enum ReliefModeler {
         scene.rootNode.addChildNode(holder)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Figurines", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let url = folder.appendingPathComponent("\(name).usdz")
+        let safeName = name.replacingOccurrences(of: "/", with: "")
+            .replacingOccurrences(of: ":", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let url = folder.appendingPathComponent("\(safeName.isEmpty ? "wuling" : safeName).usdz")
         try? FileManager.default.removeItem(at: url)
         return scene.write(to: url, options: nil, delegate: nil, progressHandler: nil) ? url : nil
     }

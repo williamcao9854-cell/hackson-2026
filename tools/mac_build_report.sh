@@ -39,7 +39,7 @@ rm -rf "$OUT"; mkdir -p "$OUT/screens"
 if [ -z "${SIM_NAME:-}" ]; then
   SIM_NAME=$(xcrun simctl list devices available | grep -E '^[[:space:]]+iPhone' | head -1 | sed -E 's/^[[:space:]]+//; s/ \(.*$//')
 fi
-echo "▶ 编译 $COMMIT（模拟器：$SIM_NAME）"
+echo "▶ 编译 ${COMMIT}（模拟器：${SIM_NAME}）"
 LOG="$OUT/xcodebuild.log"
 xcodebuild -project "$BUILD_DIR/Wuling.xcodeproj" -scheme Wuling -configuration Debug \
   -destination "platform=iOS Simulator,name=$SIM_NAME" -derivedDataPath "$DERIVED" \

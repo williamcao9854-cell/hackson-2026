@@ -55,25 +55,59 @@ struct StickerView: View {
     }
 }
 
-/// 物灵插画。没有图片时显示一个安静的占位。
+/// 物灵插画。带内存缓存与后台下采样解码，避免滚动和冷启动时卡住主线程。
 struct SpiritArtView: View {
     var data: Data?
     var contentMode: ContentMode = .fit
+    /// 解码最大像素边长（列表卡片传 420，详情页传 900）
+    var maxDimension: CGFloat = 900
+    /// 供 ImageRenderer（分享卡片）同步取图
+    var synchronous: Bool = false
+
+    @State private var decoded: UIImage?
+
+    private var dataSignature: Int {
+        guard let data else { return 0 }
+        var hasher = Hasher()
+        hasher.combine(data.count)
+        hasher.combine(data.prefix(32))
+        hasher.combine(data.suffix(32))
+        hasher.combine(Int(maxDimension))
+        return hasher.finalize()
+    }
 
     var body: some View {
-        if let data, let image = UIImage(data: data) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: contentMode)
-        } else {
-            ZStack {
-                Circle()
-                    .fill(Color.ink.opacity(0.06))
-                    .padding(28)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundStyle(.inkSecondary)
+        let image: UIImage? = synchronous
+            ? ImageDecoding.decodeSync(data, maxDimension: maxDimension)
+            : (decoded ?? ImageDecoding.cached(data, maxDimension: maxDimension))
+
+        Group {
+            if let image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: contentMode)
+            } else {
+                ZStack {
+                    Circle()
+                        .fill(Color.ink.opacity(0.06))
+                        .padding(28)
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(.inkSecondary)
+                }
             }
+        }
+        .task(id: dataSignature) {
+            guard !synchronous else { return }
+            guard let data else {
+                decoded = nil
+                return
+            }
+            if let hit = ImageDecoding.cached(data, maxDimension: maxDimension) {
+                decoded = hit
+                return
+            }
+            decoded = await ImageDecoding.decode(data, maxDimension: maxDimension)
         }
     }
 }

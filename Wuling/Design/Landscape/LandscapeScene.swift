@@ -193,7 +193,7 @@ struct LandscapeScene {
 
     private func ridgePath(w: Double, h: Double, base: Double, amplitude: Double, seed: Double, drift: Double) -> Path {
         var path = Path()
-        let steps = 90
+        let steps = 48
         // 左右各多画一点，倾斜错动时不露边
         let left: Double = -30
         let right: Double = w + 30

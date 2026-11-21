@@ -8,6 +8,8 @@ struct GardenHero: View {
     var living: [Spirit]
     var lanterns: Int
     var geese: Int
+    /// 整个图鉴本来就空着时，下方已有空态引导，岸边不再重复叠一块提示
+    var showEmptyHint: Bool = true
 
     private let maxFigures = 6
 
@@ -45,7 +47,7 @@ struct GardenHero: View {
                         .position(x: geo.size.width / 2, y: geo.size.height - 14)
                 }
 
-                if living.isEmpty {
+                if living.isEmpty && showEmptyHint {
                     VStack(spacing: 4) {
                         Text("园林里还空着")
                             .font(.system(size: 14, weight: .semibold))
@@ -161,7 +163,7 @@ private struct GardenFigure: View {
                 StandeeView(figure: image, interactive: false)
                     .frame(width: height * 0.85, height: height)
             } else {
-                SpiritArtView(data: spirit.spiritImageData, contentMode: .fill)
+                SpiritArtView(data: spirit.spiritImageData, contentMode: .fill, maxDimension: 300)
                     .frame(width: height * 0.7, height: height * 0.7)
                     .clipShape(Circle())
                     .frame(height: height)
@@ -178,7 +180,7 @@ private struct GardenFigure: View {
         .onAppear { FigureCache.ensureFigure(for: spirit, in: modelContext) }
         .task(id: spirit.figureImageData?.count ?? spirit.stickerImageData?.count ?? 0) {
             let data = spirit.figureImageData ?? spirit.stickerImageData
-            image = await ImageDecoding.decode(data)
+            image = await ImageDecoding.decode(data, maxDimension: 360)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(spirit.name)，\(spirit.objectName)，同住")

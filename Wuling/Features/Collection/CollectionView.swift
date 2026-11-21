@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import TipKit
 
 /// 首页：物灵图鉴。
 struct CollectionView: View {
@@ -13,7 +12,6 @@ struct CollectionView: View {
     @State private var showingOnboarding = false
     @State private var showingReceive = false
     @AppStorage("wuling.onboarded") private var onboarded = false
-    private let gardenTip = GardenTip()
     @Namespace private var zoom
 
     /// 隔空投送或从文件 App 打开的物灵
@@ -51,45 +49,40 @@ struct CollectionView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         GardenHero(topInset: proxy.safeAreaInsets.top,
                                    living: spirits.filter { !$0.isReleased },
-                                   lanterns: releasedCount, geese: relayedCount)
-                            .frame(height: max(520, proxy.size.height * 0.74))
-
-                        legendRow
-                            .padding(.horizontal, Metrics.gutter)
-
-                        if !spirits.isEmpty {
-                            TipView(gardenTip)
-                                .tipBackground(Color.card)
-                                .padding(.horizontal, Metrics.gutter)
-                                .padding(.top, 14)
-                        }
+                                   lanterns: releasedCount, geese: relayedCount,
+                                   showEmptyHint: !spirits.isEmpty)
+                            .frame(height: max(460, proxy.size.height * 0.62))
 
                         if spirits.isEmpty {
                             EmptyCollectionView()
                                 .padding(.top, 12)
                         } else {
-                            Picker("筛选", selection: $filter) {
-                                ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
-                            }
-                            .pickerStyle(.segmented)
-                            .padding(.horizontal, Metrics.gutter)
-                            .padding(.top, 24)
+                            filterBar
+                                .padding(.top, 16)
 
-                            LazyVGrid(columns: columns, spacing: 18) {
-                                ForEach(filtered) { spirit in
-                                    NavigationLink {
-                                        SpiritDetailView(spirit: spirit)
-                                            .navigationTransition(.zoom(sourceID: spirit.id, in: zoom))
-                                    } label: {
-                                        SpiritCardView(spirit: spirit)
-                                            .matchedTransitionSource(id: spirit.id, in: zoom)
+                            if filtered.isEmpty {
+                                Text(emptyFilterMessage)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(.inkSecondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 48)
+                            } else {
+                                LazyVGrid(columns: columns, spacing: 18) {
+                                    ForEach(filtered) { spirit in
+                                        NavigationLink {
+                                            SpiritDetailView(spirit: spirit)
+                                                .navigationTransition(.zoom(sourceID: spirit.id, in: zoom))
+                                        } label: {
+                                            SpiritCardView(spirit: spirit)
+                                                .matchedTransitionSource(id: spirit.id, in: zoom)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
                                 }
+                                .padding(.horizontal, Metrics.gutter)
+                                .padding(.top, 18)
+                                .animation(.smooth, value: filter)
                             }
-                            .padding(.horizontal, Metrics.gutter)
-                            .padding(.top, 20)
-                            .animation(.smooth, value: filter)
                         }
                     }
                     .padding(.bottom, 120)
@@ -164,36 +157,52 @@ struct CollectionView: View {
     private var relayedCount: Int { spirits.filter(\.isRelayed).count }
     private var releasedCount: Int { spirits.count - livingCount - relayedCount }
 
-    /// 园林下方的图例：岸边 = 同住，河灯 = 送别，鸿雁 = 传出。点一下筛选下面的图鉴。
-    @ViewBuilder
-    private var legendRow: some View {
-        if !spirits.isEmpty {
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    legendChip(symbol: "figure.stand", text: "岸边 · 同住", count: livingCount, filter: .living)
-                    legendChip(symbol: "flame", text: "河灯 · 送别", count: releasedCount, filter: .released)
-                    legendChip(symbol: "bird", text: "鸿雁 · 传出", count: relayedCount, filter: .relayed)
-                }
-            }
+    private var emptyFilterMessage: String {
+        switch filter {
+        case .all: "还没有唤醒过物灵"
+        case .living: "目前没有同住的物灵"
+        case .released: "还没有送别过的物灵"
+        case .relayed: "还没有传出过的物灵"
         }
     }
 
-    private func legendChip(symbol: String, text: String, count: Int, filter target: Filter) -> some View {
-        Button {
-            withAnimation(.smooth) { filter = filter == target ? .all : target }
+    /// 统一的图鉴筛选条（合并了原来的图例与分段选择器）
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    filterChip(symbol: nil, text: "全部", count: spirits.count, target: .all)
+                    filterChip(symbol: "figure.stand", text: "同住", count: livingCount, target: .living)
+                    filterChip(symbol: "flame", text: "送别", count: releasedCount, target: .released)
+                    filterChip(symbol: "bird", text: "传出", count: relayedCount, target: .relayed)
+                }
+            }
+            .padding(.horizontal, Metrics.gutter)
+            .padding(.vertical, 2)
+        }
+    }
+
+    private func filterChip(symbol: String?, text: String, count: Int, target: Filter) -> some View {
+        let selected = filter == target
+        return Button {
+            withAnimation(.smooth) { filter = target }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
-                Text(text).font(.system(size: 12, weight: .medium))
+                if let symbol {
+                    Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                }
+                Text(text).font(.system(size: 13, weight: selected ? .semibold : .medium))
                 Text("\(count)").font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .opacity(selected ? 0.9 : 0.6)
             }
-            .foregroundStyle(filter == target ? Color.vermilion : Color.ink)
-            .padding(.horizontal, 10)
+            .foregroundStyle(selected ? Color.vermilion : Color.ink)
+            .padding(.horizontal, 12)
             .padding(.vertical, 7)
         }
         .buttonStyle(.plain)
         .glassEffect(.regular.interactive(), in: Capsule())
         .accessibilityLabel("\(text)，\(count) 个")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// 底部：遇见（拍一件旧物）· 接灵（收下别人传来的物灵）

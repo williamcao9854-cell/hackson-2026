@@ -234,7 +234,7 @@ final class EncounterModel {
             colorName: color.name,
             palette: palette,
             spiritImageData: spiritImageData,
-            stickerImageData: sticker?.pngData(),
+            stickerImageData: sticker.map { ImageCompression.resized($0, maxDimension: 900) }?.pngData(),
             isPlaceholderArt: isPlaceholderArt
         )
         spirit.figureImageData = figureImageData

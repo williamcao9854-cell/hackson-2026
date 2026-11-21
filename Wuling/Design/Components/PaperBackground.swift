@@ -9,6 +9,7 @@ struct PaperBackground: View {
         color
             .overlay {
                 PaperFibers()
+                    .drawingGroup()
                     .allowsHitTesting(false)
             }
             .ignoresSafeArea()

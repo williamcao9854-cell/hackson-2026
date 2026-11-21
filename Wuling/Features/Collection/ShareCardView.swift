@@ -7,7 +7,7 @@ struct ShareCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                SpiritArtView(data: spirit.spiritImageData, contentMode: .fill)
+                SpiritArtView(data: spirit.spiritImageData, contentMode: .fill, maxDimension: 720, synchronous: true)
                     .frame(width: 312, height: 312)
                     .clipped()
                 VerticalText(text: spirit.name, font: .wlSpiritName(34))

@@ -13,7 +13,7 @@ struct SpiritCardView: View {
             Color.paper
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
-                    SpiritArtView(data: spirit.spiritImageData, contentMode: .fill)
+                    SpiritArtView(data: spirit.spiritImageData, contentMode: .fill, maxDimension: 420)
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 .overlay {

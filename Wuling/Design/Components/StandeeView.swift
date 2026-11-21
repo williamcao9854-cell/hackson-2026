@@ -10,15 +10,18 @@ struct StandeeView: View {
     var interactive: Bool = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     private let motion = MotionParallax.shared
     @State private var drag: CGSize = .zero
     @State private var hop = false
     @State private var phaseSeed = Double.random(in: 0...10)
     @State private var motionStarted = false
+    @State private var isVisible = false
 
     var body: some View {
+        let paused = reduceMotion || !isVisible || scenePhase != .active
         GeometryReader { geo in
-            TimelineView(.animation(minimumInterval: interactive ? 1.0 / 30 : 1.0 / 15, paused: reduceMotion)) { timeline in
+            TimelineView(.animation(minimumInterval: interactive ? 1.0 / 30 : 1.0 / 10, paused: paused)) { timeline in
                 let angles = Self.angles(time: timeline.date.timeIntervalSinceReferenceDate,
                                          seed: phaseSeed, sway: interactive ? 7 : 5,
                                          tilt: reduceMotion ? CGSize.zero : motion.tilt,
@@ -38,11 +41,13 @@ struct StandeeView: View {
         }
         .sensoryFeedback(.impact(weight: .light), trigger: hop)
         .onAppear {
+            isVisible = true
             guard !reduceMotion, !motionStarted else { return }
             motion.start()
             motionStarted = true
         }
         .onDisappear {
+            isVisible = false
             guard motionStarted else { return }
             motion.stop()
             motionStarted = false
@@ -81,8 +86,8 @@ struct StandeeView: View {
         let w: CGFloat = size.width
         let h: CGFloat = size.height
         let turn = CGFloat(sin(yaw * Double.pi / 180))
-        // 亚克力厚度：转得越多，侧边露得越多
-        let layers = interactive ? 9 : 5
+        // 亚克力厚度：转得越多，侧边露得越多（首页多立牌用轻量层数避免压爆 GPU）
+        let layers = interactive ? 9 : 3
         let step: CGFloat = -turn * max(1.0, w / 130)
 
         let baseWidth: CGFloat = w * 0.66
@@ -120,13 +125,15 @@ struct StandeeView: View {
                 Ellipse()
                     .strokeBorder(Color.white.opacity(0.85), lineWidth: 0.8)
                     .padding(1)
-                // 底座上的倒影
-                image
-                    .scaleEffect(x: 1, y: -1)
-                    .frame(height: bodyHeight * 0.35)
-                    .opacity(0.14)
-                    .blur(radius: 1.5)
-                    .mask(Ellipse())
+                // 底座上的倒影（详情页交互大立牌渲染；首页多小立牌跳过离屏 blur+mask 降 GPU 压力）
+                if interactive {
+                    image
+                        .scaleEffect(x: 1, y: -1)
+                        .frame(height: bodyHeight * 0.35)
+                        .opacity(0.14)
+                        .blur(radius: 1.5)
+                        .mask(Ellipse())
+                }
             }
             .frame(width: baseWidth, height: baseHeight)
             .offset(y: h - baseHeight)
@@ -144,18 +151,20 @@ struct StandeeView: View {
                 }
                 image
                     .shadow(color: .black.opacity(0.15), radius: 0.6)
-                // 高光：随角度扫过
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0),
-                        .init(color: .white.opacity(0.65), location: 0.5),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: shineStart,
-                    endPoint: shineEnd
-                )
-                .mask { image }
-                .opacity(0.42)
+                // 高光：随角度扫过（仅交互大立牌启用离屏 mask，首页多立牌保持流畅）
+                if interactive {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .white.opacity(0.65), location: 0.5),
+                            .init(color: .clear, location: 1),
+                        ],
+                        startPoint: shineStart,
+                        endPoint: shineEnd
+                    )
+                    .mask { image }
+                    .opacity(0.42)
+                }
             }
             // 宽的物品（椅子、电脑）会被宽度限制而变矮：贴底对齐，脚始终落在底座上
             .frame(width: w * 0.9, height: bodyHeight, alignment: .bottom)

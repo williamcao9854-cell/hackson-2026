@@ -74,7 +74,10 @@ struct SpiritDetailView: View {
             if spirit.figureImageData == nil { mode = .painting }
         }
         .task(id: spirit.figureImageData?.count ?? 0) {
-            figureImage = await ImageDecoding.decode(spirit.figureImageData)
+            figureImage = await ImageDecoding.decode(spirit.figureImageData, maxDimension: 720)
+        }
+        .task(id: spirit.stickerImageData?.count ?? 0) {
+            stickerImage = await ImageDecoding.decode(spirit.stickerImageData, maxDimension: 720)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -122,7 +125,7 @@ struct SpiritDetailView: View {
             ZStack {
                 AmbientBackdrop(intensity: 0.5)
                 FarewellView(
-                    sticker: spirit.stickerImageData.flatMap(UIImage.init(data:)),
+                    sticker: stickerImage ?? ImageDecoding.decodeSync(spirit.stickerImageData, maxDimension: 720),
                     spiritImageData: spirit.spiritImageData,
                     spiritName: spirit.name,
                     palette: spirit.palette,
@@ -158,8 +161,9 @@ struct SpiritDetailView: View {
 
     // MARK: - 立牌 / 画作 / 原貌
 
-    /// 解码好的立牌图（后台解码一次并缓存）
+    /// 解码好的立牌图与贴纸图（后台解码一次并缓存）
     @State private var figureImage: UIImage?
+    @State private var stickerImage: UIImage?
 
     /// LiDAR 扫描的原物模型（文件还在才算）
     private var scanURL: URL? {
@@ -218,7 +222,7 @@ struct SpiritDetailView: View {
                         }
                         .transition(.opacity)
                 case .original:
-                    if let data = spirit.stickerImageData, let sticker = UIImage(data: data) {
+                    if let sticker = stickerImage {
                         StickerView(image: sticker, lifted: true)
                             .padding(56)
                             .background(Color.card)
@@ -380,7 +384,7 @@ struct SpiritDetailView: View {
 
     private func renderShareImage() {
         let renderer = ImageRenderer(content: ShareCardView(spirit: spirit).environment(\.colorScheme, .light))
-        renderer.scale = 3
+        renderer.scale = 2
         if let uiImage = renderer.uiImage {
             shareImage = Image(uiImage: uiImage)
         }

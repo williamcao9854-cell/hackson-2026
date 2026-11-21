@@ -47,7 +47,7 @@ struct FigurineView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            if node != nil {
+            if node != nil && ObjectScanView.isSupported {
                 Button {
                     openAR()
                 } label: {
