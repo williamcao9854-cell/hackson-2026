@@ -9,13 +9,13 @@ struct PaperBackground: View {
         color
             .overlay {
                 PaperFibers()
-                    .allowsHitTesting(false)
             }
             .ignoresSafeArea()
     }
 }
 
-private struct PaperFibers: View {
+/// 纸的纤维：几百根细短的曲线。按深浅分成四组，每组拼成一条 Path 一次画完（4 次绘制，而不是几百次）。
+struct PaperFibers: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -23,21 +23,28 @@ private struct PaperFibers: View {
             var rng = SeededRandom(seed: 20261121)
             let fiberColor: Color = colorScheme == .dark ? .white : Color(red: 0.42, green: 0.35, blue: 0.25)
             let count = Int(size.width * size.height / 1400)
+            var groups: [Path] = [Path(), Path(), Path(), Path()]
             for _ in 0..<count {
-                let x = rng.next() * size.width
-                let y = rng.next() * size.height
-                let length = 4 + rng.next() * 14
-                let angle = rng.next() * .pi
-                var path = Path()
-                path.move(to: CGPoint(x: x, y: y))
-                path.addQuadCurve(
-                    to: CGPoint(x: x + cos(angle) * length, y: y + sin(angle) * length),
-                    control: CGPoint(x: x + cos(angle + 0.5) * length * 0.5, y: y + sin(angle + 0.5) * length * 0.5)
-                )
-                let opacity = 0.025 + rng.next() * 0.04
-                context.stroke(path, with: .color(fiberColor.opacity(opacity)), lineWidth: 0.6)
+                let x: Double = rng.next() * Double(size.width)
+                let y: Double = rng.next() * Double(size.height)
+                let length: Double = 4 + rng.next() * 14
+                let angle: Double = rng.next() * Double.pi
+                let opacity: Double = 0.025 + rng.next() * 0.04
+                let bucket: Int = min(3, Int((opacity - 0.025) / 0.01))
+                let endX: Double = x + cos(angle) * length
+                let endY: Double = y + sin(angle) * length
+                let controlX: Double = x + cos(angle + 0.5) * length * 0.5
+                let controlY: Double = y + sin(angle + 0.5) * length * 0.5
+                groups[bucket].move(to: CGPoint(x: x, y: y))
+                groups[bucket].addQuadCurve(to: CGPoint(x: endX, y: endY), control: CGPoint(x: controlX, y: controlY))
+            }
+            for index in 0..<groups.count {
+                let opacity: Double = 0.03 + Double(index) * 0.01
+                context.stroke(groups[index], with: .color(fiberColor.opacity(opacity)), lineWidth: 0.6)
             }
         }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }
 

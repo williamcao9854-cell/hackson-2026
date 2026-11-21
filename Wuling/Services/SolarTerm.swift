@@ -45,8 +45,17 @@ struct SolarTerm: Equatable, Sendable {
         ["桃始华", "仓庚鸣", "鹰化为鸠"],               // 惊蛰
     ]
 
-    enum Season: String, Sendable {
+    enum Season: String, CaseIterable, Sendable {
         case spring, summer, autumn, winter
+
+        var title: String {
+            switch self {
+            case .spring: "春"
+            case .summer: "夏"
+            case .autumn: "秋"
+            case .winter: "冬"
+            }
+        }
     }
 
     var name: String { Self.names[index] }
@@ -93,8 +102,17 @@ struct SolarTerm: Equatable, Sendable {
 }
 
 /// 一天中的时辰，决定天色
-enum DayPhase: Sendable {
+enum DayPhase: String, CaseIterable, Sendable {
     case dawn, day, dusk, night
+
+    var title: String {
+        switch self {
+        case .dawn: "晨"
+        case .day: "昼"
+        case .dusk: "暮"
+        case .night: "夜"
+        }
+    }
 
     init(date: Date, calendar: Calendar = .current) {
         let hour = calendar.component(.hour, from: date)

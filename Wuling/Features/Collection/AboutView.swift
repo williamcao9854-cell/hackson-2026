@@ -32,9 +32,12 @@ struct AboutView: View {
                         row("flame", "每送别一个物灵，水面上就多一盏河灯")
                         row("bird", "每传出一个物灵，远天就多一只鸿雁")
                         row("calendar", "右上角的玻璃题签，写着今天的节气和物候")
+                        row("mountain.2", "轻点题签可以「换景」：八幅诗意的景，或自己调时辰、四季、晴雨雪岚")
+                        row("drop", "轻点山水，水面荡开涟漪；一叶扁舟慢慢漂过，夏有荷、冬有梅")
                         row("figure.stand", "同住的物灵以亚克力立牌的样子站在岸边，可以拖动转一转")
                         row("cube", "「手办」：Core ML 深度模型一键把物灵塑成 3D")
-                        row("cube.transparent", "「扫描」：带 LiDAR 的机型可以用 Object Capture 把原物扫描成精细 3D，并支持 AR 摆在桌上")
+                        row("cube.transparent", "「扫描」：带 LiDAR 的机型可以用 Object Capture 把原物扫描成精细 3D")
+                        row("arkit", "「AR 摆在桌上」只在带 LiDAR 的机型上开放")
                     }
 
                     block(title: "隐私") {

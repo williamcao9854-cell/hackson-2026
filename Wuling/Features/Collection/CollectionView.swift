@@ -11,7 +11,9 @@ struct CollectionView: View {
     @State private var incomingError: String?
     @State private var showingOnboarding = false
     @State private var showingReceive = false
+    @State private var showingScenes = false
     @AppStorage("wuling.onboarded") private var onboarded = false
+    @AppStorage(SceneChoice.storageKey) private var sceneChoice: SceneChoice = .auto
     @Namespace private var zoom
 
     /// 隔空投送或从文件 App 打开的物灵
@@ -50,7 +52,8 @@ struct CollectionView: View {
                         GardenHero(topInset: proxy.safeAreaInsets.top,
                                    living: spirits.filter { !$0.isReleased },
                                    lanterns: releasedCount, geese: relayedCount,
-                                   showEmptyHint: !spirits.isEmpty)
+                                   showEmptyHint: !spirits.isEmpty,
+                                   onChangeScene: { showingScenes = true })
                             .frame(height: max(460, proxy.size.height * 0.62))
 
                         if spirits.isEmpty {
@@ -93,6 +96,14 @@ struct CollectionView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        showingScenes = true
+                    } label: {
+                        Image(systemName: "mountain.2")
+                    }
+                    .accessibilityLabel("换景")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         showingAbout = true
                     } label: {
                         Image(systemName: "info")
@@ -111,6 +122,9 @@ struct CollectionView: View {
             }
             .sheet(isPresented: $showingAbout) {
                 AboutView()
+            }
+            .sheet(isPresented: $showingScenes) {
+                SceneSheet(lanterns: releasedCount, geese: relayedCount)
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
                 OnboardingView()
@@ -132,10 +146,11 @@ struct CollectionView: View {
                 guard url.pathExtension.lowercased() == SpiritCapsule.fileExtension else { return }
                 do {
                     let capsule = try SpiritCapsule.read(from: url)
-                    if showingEncounter || showingAbout || showingOnboarding || showingReceive {
+                    if showingEncounter || showingAbout || showingOnboarding || showingReceive || showingScenes {
                         // 先关掉正在打开的页面，等它退场后再弹出，否则 SwiftUI 会丢掉这次弹窗
                         showingEncounter = false
                         showingAbout = false
+                        showingScenes = false
                         showingOnboarding = false
                         showingReceive = false
                         Task {
@@ -151,6 +166,8 @@ struct CollectionView: View {
             }
         }
         .foregroundStyle(.ink)
+        // 换景时手动选了时辰：夜里整个 App 进入深色，其余时辰是和纸白
+        .preferredColorScheme(sceneChoice.preferredColorScheme)
     }
 
     private var livingCount: Int { spirits.filter { !$0.isReleased }.count }

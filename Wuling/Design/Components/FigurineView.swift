@@ -3,7 +3,8 @@ import QuickLook
 import SceneKit
 import SwiftUI
 
-/// 3D 手办 / 扫描模型的查看器：手指拖动转着看，没碰时缓缓左右转；可以用 AR 摆在桌上。
+/// 3D 手办 / 扫描模型的查看器：手指拖动转着看，没碰时缓缓左右转。
+/// 带 LiDAR 的机型可以用 AR 摆在桌上；其他机型不开放 AR（放置不稳，演示体验不好）。
 struct FigurineView: View {
     enum Source: Equatable {
         /// 由物灵立牌图一键生成
@@ -47,7 +48,7 @@ struct FigurineView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            if node != nil && ObjectScanView.isSupported {
+            if node != nil && DeviceSupport.hasLiDAR {
                 Button {
                     openAR()
                 } label: {
@@ -59,6 +60,12 @@ struct FigurineView: View {
                 .foregroundStyle(.ink)
                 .disabled(exporting)
                 .padding(.bottom, 6)
+            } else if node != nil {
+                Label("拖动可以转着看", systemImage: "hand.draw")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.inkSecondary)
+                    .padding(.bottom, 10)
+                    .transition(.opacity)
             }
         }
         .animation(.wlCalm, value: node != nil)
@@ -175,6 +182,8 @@ enum ARQuickLook {
     private static var dataSource: DataSource?
 
     static func present(_ url: URL) {
+        // AR 只在带 LiDAR 的机型上开放
+        guard DeviceSupport.hasLiDAR else { return }
         guard let root = UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow?.rootViewController })
             .first else { return }

@@ -11,7 +11,8 @@ struct ObjectScanView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model = ObjectScanModel()
 
-    static var isSupported: Bool { ObjectCaptureSession.isSupported }
+    /// 只在带 LiDAR 的机型上开放
+    static var isSupported: Bool { DeviceSupport.hasLiDAR && ObjectCaptureSession.isSupported }
 
     var body: some View {
         ZStack {

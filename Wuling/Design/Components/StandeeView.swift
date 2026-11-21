@@ -94,8 +94,10 @@ struct StandeeView: View {
         let baseHeight: CGFloat = max(10, h * 0.11)
         let footY: CGFloat = h - baseHeight * 0.55          // 立牌的脚落在底座中间偏后
         let bodyHeight: CGFloat = footY * 0.97
-        let shadowWidth: CGFloat = baseWidth * 1.15
-        let shadowHeight: CGFloat = baseHeight * 0.9
+        let shadowWidth: CGFloat = baseWidth * 1.4
+        let shadowHeight: CGFloat = baseHeight * 1.3
+        let shadowX: CGFloat = -turn * w * 0.06
+        let shadowY: CGFloat = h - baseHeight * 0.95
         let hopLift: CGFloat = hop ? -h * 0.05 : 0
         let hopScale: CGFloat = hop ? 1.05 : 1
         let shine = CGFloat(yaw / 40)
@@ -105,12 +107,12 @@ struct StandeeView: View {
         let pitchAngle = Angle.degrees(pitch)
 
         return ZStack(alignment: .top) {
-            // 地上的影子
+            // 地上的影子：椭圆渐变，代替 blur（blur 每帧都要离屏渲染一次，首页好几个立牌时很费）
             Ellipse()
-                .fill(Color.black.opacity(0.16))
+                .fill(EllipticalGradient(colors: [Color.black.opacity(0.2), Color.black.opacity(0.08), Color.black.opacity(0)],
+                                         center: .center, startRadiusFraction: 0, endRadiusFraction: 0.5))
                 .frame(width: shadowWidth, height: shadowHeight)
-                .blur(radius: max(4, w / 28))
-                .offset(x: -turn * w * 0.06, y: h - shadowHeight * 0.75)
+                .offset(x: shadowX, y: shadowY)
 
             // 椭圆玻璃底座：有一点透视，像真的放在桌上
             ZStack {
@@ -149,8 +151,13 @@ struct StandeeView: View {
                         .foregroundStyle(Color(white: tone))
                         .offset(x: shift, y: -abs(shift) * 0.15)
                 }
-                image
-                    .shadow(color: .black.opacity(0.15), radius: 0.6)
+                if interactive {
+                    image
+                        .shadow(color: .black.opacity(0.15), radius: 0.6)
+                } else {
+                    // 首页的小立牌不加描边阴影：每个阴影都是一次离屏渲染
+                    image
+                }
                 // 高光：随角度扫过（仅交互大立牌启用离屏 mask，首页多立牌保持流畅）
                 if interactive {
                     LinearGradient(

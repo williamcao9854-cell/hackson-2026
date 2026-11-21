@@ -10,13 +10,15 @@ struct GardenHero: View {
     var geese: Int
     /// 整个图鉴本来就空着时，下方已有空态引导，岸边不再重复叠一块提示
     var showEmptyHint: Bool = true
+    /// 轻点节气题签：换景
+    var onChangeScene: (() -> Void)? = nil
 
     private let maxFigures = 6
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                LandscapeHeader(topInset: topInset, lanterns: lanterns, geese: geese)
+                LandscapeHeader(topInset: topInset, lanterns: lanterns, geese: geese, onChangeScene: onChangeScene)
 
                 // 岸：物灵站在这里，而不是飘在山腰上
                 ShoreGround()
