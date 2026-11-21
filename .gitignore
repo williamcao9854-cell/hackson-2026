@@ -10,3 +10,9 @@ build/
 
 # API 密钥：绝不提交
 Wuling/Resources/Secrets.plist
+
+# Mac 自动编译脚本的工作目录
+.ci-build/
+.ci-feedback/
+/.ci-build-last
+/.ci-build-derived/

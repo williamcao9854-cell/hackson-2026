@@ -25,6 +25,22 @@
    （如果提示 Bundle Identifier 已被占用，把 `com.hackson2026.wuling` 改成别的，比如加上你的名字）
 4. 顶部选择你的 iPhone 或模拟器，按 **⌘R** 运行
 
+### 🤖 自动编译，和 Claude 联动（推荐）
+Mac 上运行一个脚本，它会盯着 GitHub：Claude 每推一次修复，Mac 就自动拉取、编译，并把**报错或模拟器截图**推回 GitHub 的 `ci-feedback` 分支，Claude 看到后继续修。你不需要手动转发报错。
+
+```bash
+cd ~/Desktop/hackson-2026
+bash tools/mac_watch.sh
+```
+让这个终端窗口一直开着就行，按 Ctrl+C 停止。前提是这台 Mac 能 push 到 GitHub（见下面）。
+
+**让 Mac 能 push 到 GitHub（只需一次）：**
+```bash
+brew install gh          # 没有 Homebrew 的话，先去 https://brew.sh 安装
+gh auth login            # 选 GitHub.com → HTTPS → 用浏览器登录
+gh auth setup-git
+```
+
 ### 真机还是模拟器？
 | | 真机 | 模拟器 |
 |---|---|---|
@@ -90,6 +106,7 @@ Wuling/
 Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本
 tools/generate_poster.py    调用 AMD API 生成项目海报
+tools/mac_watch.sh          Mac 上自动编译、截图并回报给 Claude
 ```
 
 ## 隐私

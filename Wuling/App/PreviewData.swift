@@ -1,20 +1,30 @@
 import SwiftData
 import SwiftUI
 
-/// Xcode 预览用的示例数据（只在预览中使用，正式运行时不会插入）。
+/// 示例数据：用于 Xcode 预览，以及带 `-demo-data` 启动参数时（自动截图用）。
+/// 正常运行时不会插入。
 @MainActor
 enum PreviewData {
     static let container: ModelContainer = {
         let container = try! ModelContainer(for: Spirit.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        for spirit in samples {
+        for spirit in makeSamples() {
             container.mainContext.insert(spirit)
         }
         return container
     }()
 
-    static var sample: Spirit { samples[0] }
+    static var sample: Spirit {
+        (try? container.mainContext.fetch(FetchDescriptor<Spirit>(sortBy: [SortDescriptor(\.serial)])).first) ?? makeSamples()[0]
+    }
 
-    private static let samples: [Spirit] = {
+    /// 图鉴为空时插入示例物灵
+    static func seedIfEmpty(_ context: ModelContext) {
+        guard ((try? context.fetchCount(FetchDescriptor<Spirit>())) ?? 0) == 0 else { return }
+        for spirit in makeSamples() { context.insert(spirit) }
+        try? context.save()
+    }
+
+    static func makeSamples() -> [Spirit] {
         let items: [(String, String, ObjectFamily, Companionship, RGB, String, Bool)] = [
             ("跑鞋", "running shoe", .footwear, .years, RGB(r: 0.25, g: 0.55, b: 0.6), "高三那年，它陪我跑完了每一个清晨。", true),
             ("马克杯", "coffee mug", .vessel, .aboutAYear, RGB(r: 0.85, g: 0.6, b: 0.3), "", false),
@@ -42,5 +52,5 @@ enum PreviewData {
             }
             return spirit
         }
-    }()
+    }
 }
