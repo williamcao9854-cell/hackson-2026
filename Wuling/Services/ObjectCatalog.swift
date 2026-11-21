@@ -257,6 +257,71 @@ enum ObjectCatalog {
             ("~smartwatch", "智能手表", "smartwatch", .electronic),
             ("~glasses", "眼镜", "eyeglasses", .accessory),
             ("~alarm clock", "闹钟", "alarm clock", .electronic),
+            // Vision 内置分类器常见的日常标签（下划线已替换为空格）
+            ("notebook computer", "笔记本电脑", "laptop computer", .electronic),
+            ("mug", "马克杯", "coffee mug", .vessel),
+            ("bottle", "瓶子", "bottle", .vessel),
+            ("bowl", "碗", "bowl", .vessel),
+            ("shoes", "鞋", "shoe", .footwear),
+            ("boot", "靴子", "boot", .footwear),
+            ("boots", "靴子", "boots", .footwear),
+            ("high heels", "高跟鞋", "high heel shoe", .footwear),
+            ("guitar", "吉他", "acoustic guitar", .instrument),
+            ("piano", "钢琴", "piano", .instrument),
+            ("camera", "相机", "camera", .electronic),
+            ("cellphone", "手机", "mobile phone", .electronic),
+            ("smartphone", "手机", "smartphone", .electronic),
+            ("computer", "电脑", "computer", .electronic),
+            ("keyboard", "键盘", "keyboard", .electronic),
+            ("headset", "耳机", "headset", .electronic),
+            ("speaker", "音箱", "speaker", .electronic),
+            ("game controller", "游戏手柄", "game controller", .electronic),
+            ("clock", "钟", "clock", .electronic),
+            ("watch", "手表", "wristwatch", .accessory),
+            ("wristwatch", "手表", "wristwatch", .accessory),
+            ("lamp", "台灯", "lamp", .electronic),
+            ("teddy bear", "玩偶熊", "teddy bear", .toy),
+            ("toy", "玩具", "toy", .toy),
+            ("stuffed toy", "毛绒玩具", "stuffed toy", .toy),
+            ("ball", "球", "ball", .sport),
+            ("book", "书", "book", .paper),
+            ("notebook", "笔记本", "paper notebook", .paper),
+            ("pen", "笔", "pen", .tool),
+            ("pencil", "铅笔", "pencil", .tool),
+            ("scissors", "剪刀", "scissors", .tool),
+            ("hat", "帽子", "hat", .accessory),
+            ("cap", "棒球帽", "baseball cap", .accessory),
+            ("eyeglasses", "眼镜", "eyeglasses", .accessory),
+            ("handbag", "手提包", "handbag", .bag),
+            ("bag", "包", "bag", .bag),
+            ("jewelry", "首饰", "jewelry", .accessory),
+            ("earrings", "耳环", "earrings", .accessory),
+            ("scarf", "围巾", "scarf", .clothing),
+            ("glove", "手套", "glove", .clothing),
+            ("shirt", "衬衫", "shirt", .clothing),
+            ("tshirt", "T 恤", "t-shirt", .clothing),
+            ("jacket", "外套", "jacket", .clothing),
+            ("coat", "大衣", "coat", .clothing),
+            ("dress", "裙子", "dress", .clothing),
+            ("jeans", "牛仔裤", "denim jeans", .clothing),
+            ("sweater", "毛衣", "sweater", .clothing),
+            ("hoodie", "卫衣", "hoodie", .clothing),
+            ("blanket", "毯子", "blanket", .clothing),
+            ("towel", "毛巾", "towel", .clothing),
+            ("chair", "椅子", "chair", .furniture),
+            ("sofa", "沙发", "sofa", .furniture),
+            ("couch", "沙发", "sofa", .furniture),
+            ("table", "桌子", "table", .furniture),
+            ("bicycle", "自行车", "bicycle", .sport),
+            ("skateboard", "滑板", "skateboard", .sport),
+            ("frame", "相框", "picture frame", .furniture),
+            ("mirror", "镜子", "hand mirror", .accessory),
+            ("toothbrush", "牙刷", "toothbrush", .tool),
+            ("comb", "梳子", "comb", .tool),
+            ("cosmetics", "化妆品", "cosmetics", .accessory),
+            ("spoon", "勺子", "spoon", .tool),
+            ("chopsticks", "筷子", "chopsticks", .tool),
+            ("wine bottle", "酒瓶", "wine bottle", .vessel),
         ]
         var map: [String: ObjectKind] = [:]
         for (key, chinese, english, family) in entries {
@@ -293,16 +358,37 @@ enum ObjectCatalog {
         return result
     }
 
-    /// 用一个 ImageNet 标签查找物品。标签形如 "teddy, teddy bear"。
+    /// 用一个标签查找物品。ImageNet 标签形如 "notebook, notebook computer"。
+    /// 多个同义词都能匹配时取最长（最具体）的那个，避免 "notebook" 把笔记本电脑认成纸质笔记本。
     static func kind(forLabel label: String) -> ObjectKind? {
         let synonyms = label
             .lowercased()
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
-        for synonym in synonyms {
-            if let kind = table[synonym] { return kind }
+        return synonyms
+            .filter { table[$0] != nil }
+            .max { $0.count < $1.count }
+            .flatMap { table[$0] }
+    }
+
+    /// 一组识别结果（来自某个模型、某张图），以及它的可信权重
+    struct LabelSource {
+        var labels: [(identifier: String, confidence: Float)]
+        var weight: Double
+    }
+
+    /// 合并多个模型、多张图的识别结果：同一物品的加权置信度相加，几个来源都认同的物品排在前面。
+    static func scoredKinds(from sources: [LabelSource], minConfidence: Float = 0.02) -> [(kind: ObjectKind, score: Double)] {
+        var scores: [String: (kind: ObjectKind, score: Double)] = [:]
+        for source in sources {
+            var counted = Set<String>()
+            for label in source.labels where label.confidence >= minConfidence {
+                guard let kind = kind(forLabel: label.identifier), counted.insert(kind.chinese).inserted else { continue }
+                let previous = scores[kind.chinese]?.score ?? 0
+                scores[kind.chinese] = (kind, previous + Double(label.confidence) * source.weight)
+            }
         }
-        return nil
+        return scores.values.sorted { $0.score > $1.score }
     }
 
     /// 从按置信度排好序的候选标签里，挑出第一个能识别的物品。

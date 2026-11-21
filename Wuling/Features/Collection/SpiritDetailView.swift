@@ -12,6 +12,8 @@ struct SpiritDetailView: View {
     @State private var showingRelay = false
     @State private var confirmingDelete = false
     @State private var shareImage: Image?
+    @State private var renaming = false
+    @State private var nameDraft = ""
 
     var body: some View {
         ScrollView {
@@ -64,6 +66,10 @@ struct SpiritDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("改名", systemImage: "pencil") {
+                        nameDraft = spirit.name
+                        renaming = true
+                    }
                     Button("从图鉴中移除", systemImage: "trash", role: .destructive) {
                         confirmingDelete = true
                     }
@@ -71,6 +77,17 @@ struct SpiritDetailView: View {
                     Image(systemName: "ellipsis")
                 }
             }
+        }
+        .alert("给它改个名字", isPresented: $renaming) {
+            TextField("名字", text: $nameDraft)
+            Button("好") {
+                let trimmed = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { return }
+                spirit.name = trimmed
+                try? modelContext.save()
+                renderShareImage()
+            }
+            Button("取消", role: .cancel) {}
         }
         .confirmationDialog("移除「\(spirit.name)」？", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("移除", role: .destructive) {

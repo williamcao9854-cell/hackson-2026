@@ -22,6 +22,8 @@ final class EncounterModel {
     var object: ObjectKind = .unknown
     /// 识别给出的候选，用户可以一键改正
     var candidates: [ObjectKind] = []
+    /// 识别没把握时为 true：名字留空，请用户告诉我们它是什么
+    var needsNaming = false
     var palette: [RGB] = []
 
     // 讲讲它
@@ -54,6 +56,14 @@ final class EncounterModel {
     func choose(_ kind: ObjectKind) {
         object = kind
         objectName = kind.chinese
+        needsNaming = false
+    }
+
+    /// 给物灵改名（初见时点名字即可修改）
+    func rename(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        profile?.name = trimmed
     }
 
     func toggle(_ mark: WearMark) {
@@ -66,6 +76,7 @@ final class EncounterModel {
         cutout = nil
         object = .unknown
         candidates = []
+        needsNaming = false
         palette = []
         objectName = ""
         wearMarks = []
@@ -86,8 +97,9 @@ final class EncounterModel {
         let processed = await Task.detached(priority: .userInitiated) {
             let normalized = ImageProcessing.normalized(image)
             let cutout = ImageProcessing.liftSubject(from: normalized)
-            let source = cutout.foundSubject ? ImageProcessing.onWhite(cutout.subject) : normalized.cgImage
-            let recognition = source.map(ObjectRecognizer.recognize)
+            let subject = cutout.foundSubject ? ImageProcessing.onWhite(cutout.subject) : normalized.cgImage
+            let scene = cutout.foundSubject ? normalized.cgImage : nil
+            let recognition = subject.map { ObjectRecognizer.recognize(subject: $0, scene: scene) }
             let palette = ImageProcessing.dominantColors(of: cutout.foundSubject ? cutout.subject : normalized)
             return (normalized, cutout, recognition, palette)
         }.value
@@ -97,7 +109,8 @@ final class EncounterModel {
         object = processed.2?.best ?? .unknown
         candidates = processed.2?.candidates ?? []
         palette = processed.3
-        objectName = object.chinese
+        needsNaming = !(processed.2?.isConfident ?? false)
+        objectName = needsNaming ? "" : object.chinese
         isProcessingPhoto = false
 
         withAnimation(.wlCalm) { stage = .story }

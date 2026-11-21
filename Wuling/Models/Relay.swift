@@ -7,7 +7,7 @@ import Foundation
 /// 一位主人与这件物品的一段日子
 struct RelayChapter: Codable, Hashable, Identifiable, Sendable {
     var id: UUID = UUID()
-    /// 名章上的字，2～4 个字，例如"小林"
+    /// 名章上的字，例如"小林"（长度不限）
     var ownerSeal: String
     var receivedAt: Date
     var passedAt: Date?
@@ -82,9 +82,9 @@ enum RelayError: LocalizedError {
 
 /// 传灵的纯逻辑：整理章节、生成传出的胶囊、接收时加上新主人的一章。
 enum RelayLogic {
-    /// 名章文字：去掉空格，最多 4 个字
+    /// 名章文字：去掉首尾空白，长度不限
     static func normalizedSeal(_ text: String) -> String {
-        String(text.filter { !$0.isWhitespace }.prefix(4))
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// 传出：补全"我"这一章（离开的日期、写给下一位的话、愿意分享的记忆）

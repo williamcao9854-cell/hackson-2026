@@ -19,7 +19,11 @@ struct SealStamp: View {
 
     var body: some View {
         let columns = Self.columns(for: text)
+        let rows = columns.map(\.count).max() ?? 1
+        let isCJK = Self.isCJK(text)
         let isYin = style == .yin
+        // 字越多越小：1 列 1～2 字最大，其余按行列中较多的一边缩放
+        let fontScale = columns.count == 1 && rows <= 2 ? 0.34 : 0.62 / Double(max(rows, columns.count))
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.12, style: .continuous)
                 .fill(isYin ? Color.vermilion : Color.clear)
@@ -27,15 +31,27 @@ struct SealStamp: View {
                 .strokeBorder(isYin ? Color.paper.opacity(0.9) : Color.vermilion,
                               lineWidth: max(1, size * (isYin ? 0.03 : 0.06)))
                 .padding(isYin ? size * 0.07 : 0)
-            HStack(spacing: size * 0.02) {
-                // 竖排、从右往左
-                ForEach(Array(columns.enumerated().reversed()), id: \.offset) { _, column in
-                    VStack(spacing: -size * 0.02) {
-                        ForEach(Array(column.enumerated()), id: \.offset) { _, character in
-                            Text(String(character))
-                                .font(.system(size: size * (columns.count > 1 ? 0.26 : 0.34), weight: .heavy, design: .serif))
+            Group {
+                if isCJK {
+                    HStack(spacing: size * 0.02) {
+                        // 竖排、从右往左
+                        ForEach(Array(columns.enumerated().reversed()), id: \.offset) { _, column in
+                            VStack(spacing: -size * 0.02) {
+                                ForEach(Array(column.enumerated()), id: \.offset) { _, character in
+                                    Text(String(character))
+                                        .font(.system(size: size * fontScale, weight: .heavy, design: .serif))
+                                }
+                            }
                         }
                     }
+                } else {
+                    // 西文名字横排，自动缩小到放得下
+                    Text(text)
+                        .font(.system(size: size * 0.3, weight: .heavy, design: .serif))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.3)
+                        .padding(size * 0.14)
                 }
             }
             .foregroundStyle(isYin ? Color.paper : Color.vermilion)
@@ -46,14 +62,20 @@ struct SealStamp: View {
         .accessibilityLabel(text)
     }
 
-    /// 3 个字：右列 2 个、左列 1 个；4 个字：每列 2 个；1～2 个字：一列。
+    /// 印文分列（从右往左读）：1～2 字一列；3～4 字每列 2 字；更多字时每列 3 字、4 字……尽量排成方形。
     static func columns(for text: String) -> [[Character]] {
-        let chars = Array(text)
-        switch chars.count {
-        case 0...2: return [chars]
-        case 3: return [Array(chars[0...1]), [chars[2]]]
-        default: return [Array(chars[0...1]), Array(chars[2...min(3, chars.count - 1)])]
-        }
+        let chars = Array(text.filter { !$0.isWhitespace })
+        guard chars.count > 2 else { return [chars] }
+        let perColumn = chars.count <= 4 ? 2 : Int(Double(chars.count).squareRoot().rounded(.up))
+        return stride(from: 0, to: chars.count, by: perColumn).map { Array(chars[$0..<min($0 + perColumn, chars.count)]) }
+    }
+
+    /// 是否以汉字（或日韩文字）为主，决定竖排还是横排
+    static func isCJK(_ text: String) -> Bool {
+        let scalars = text.unicodeScalars.filter { !$0.properties.isWhitespace }
+        guard !scalars.isEmpty else { return true }
+        let cjk = scalars.filter { (0x2E80...0x9FFF).contains($0.value) || (0xF900...0xFAFF).contains($0.value) || (0x20000...0x2FA1F).contains($0.value) }
+        return cjk.count * 2 >= scalars.count
     }
 }
 

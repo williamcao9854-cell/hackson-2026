@@ -41,41 +41,46 @@ struct CollectionView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                        .padding(.horizontal, Metrics.gutter)
-                        .padding(.top, 8)
+            GeometryReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        LandscapeHeader(topInset: proxy.safeAreaInsets.top, lanterns: releasedCount, geese: relayedCount)
+                            .frame(height: proxy.safeAreaInsets.top + 300)
 
-                    if spirits.isEmpty {
-                        EmptyCollectionView()
-                            .padding(.top, 56)
-                    } else {
-                        Picker("筛选", selection: $filter) {
-                            ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, Metrics.gutter)
-                        .padding(.top, 24)
+                        countsRow
+                            .padding(.horizontal, Metrics.gutter)
 
-                        LazyVGrid(columns: columns, spacing: 18) {
-                            ForEach(filtered) { spirit in
-                                NavigationLink {
-                                    SpiritDetailView(spirit: spirit)
-                                        .navigationTransition(.zoom(sourceID: spirit.id, in: zoom))
-                                } label: {
-                                    SpiritCardView(spirit: spirit)
-                                        .matchedTransitionSource(id: spirit.id, in: zoom)
-                                }
-                                .buttonStyle(.plain)
+                        if spirits.isEmpty {
+                            EmptyCollectionView()
+                                .padding(.top, 12)
+                        } else {
+                            Picker("筛选", selection: $filter) {
+                                ForEach(Filter.allCases) { Text($0.rawValue).tag($0) }
                             }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal, Metrics.gutter)
+                            .padding(.top, 24)
+
+                            LazyVGrid(columns: columns, spacing: 18) {
+                                ForEach(filtered) { spirit in
+                                    NavigationLink {
+                                        SpiritDetailView(spirit: spirit)
+                                            .navigationTransition(.zoom(sourceID: spirit.id, in: zoom))
+                                    } label: {
+                                        SpiritCardView(spirit: spirit)
+                                            .matchedTransitionSource(id: spirit.id, in: zoom)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, Metrics.gutter)
+                            .padding(.top, 20)
+                            .animation(.smooth, value: filter)
                         }
-                        .padding(.horizontal, Metrics.gutter)
-                        .padding(.top, 20)
-                        .animation(.smooth, value: filter)
                     }
+                    .padding(.bottom, 120)
                 }
-                .padding(.bottom, 120)
+                .ignoresSafeArea(edges: .top)
             }
             .background(PaperBackground())
             .toolbar {
@@ -130,29 +135,29 @@ struct CollectionView: View {
         .foregroundStyle(.ink)
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                Text("物灵")
-                    .font(.system(size: 40, weight: .semibold, design: .serif))
-                SealStamp(text: "图鉴", size: 30, rotation: .degrees(-6))
-                    .offset(y: 2)
-            }
-            Text("万物有灵。谢谢它们陪过你。")
-                .font(.system(size: 15))
-                .foregroundStyle(.inkSecondary)
-            if !spirits.isEmpty {
-                let living = spirits.filter { !$0.isReleased }.count
-                let relayed = spirits.filter(\.isRelayed).count
-                let released = spirits.count - living - relayed
-                Text(relayed > 0
-                     ? "同住 \(living)　·　已送别 \(released)　·　已传出 \(relayed)"
-                     : "同住 \(living)　·　已送别 \(released)")
+    private var livingCount: Int { spirits.filter { !$0.isReleased }.count }
+    private var relayedCount: Int { spirits.filter(\.isRelayed).count }
+    private var releasedCount: Int { spirits.count - livingCount - relayedCount }
+
+    /// 山水下方：数量，以及河灯、鸿雁的含义
+    @ViewBuilder
+    private var countsRow: some View {
+        if !spirits.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(relayedCount > 0
+                     ? "同住 \(livingCount)　·　已送别 \(releasedCount)　·　已传出 \(relayedCount)"
+                     : "同住 \(livingCount)　·　已送别 \(releasedCount)")
                     .font(.wlCaption)
                     .monospacedDigit()
-                    .foregroundStyle(.inkSecondary)
-                    .padding(.top, 2)
+                if releasedCount > 0 || relayedCount > 0 {
+                    Text([releasedCount > 0 ? "水上的河灯，是你送别的物灵" : nil,
+                          relayedCount > 0 ? "远天的鸿雁，是传出去的物灵" : nil]
+                        .compactMap { $0 }
+                        .joined(separator: "；"))
+                        .font(.system(size: 12))
+                }
             }
+            .foregroundStyle(.inkSecondary)
         }
     }
 

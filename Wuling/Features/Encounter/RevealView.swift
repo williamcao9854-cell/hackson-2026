@@ -10,6 +10,8 @@ struct RevealView: View {
     @State private var artFocused = false
     @State private var revealedCharacters = 0
     @State private var detailsVisible = false
+    @State private var renaming = false
+    @State private var nameDraft = ""
 
     var body: some View {
         let profile = model.profile
@@ -45,6 +47,16 @@ struct RevealView: View {
                 .offset(y: detailsVisible ? 0 : 12)
         }
         .sensoryFeedback(.impact(weight: .light, intensity: 0.6), trigger: revealedCharacters)
+        .alert("给它改个名字", isPresented: $renaming) {
+            TextField("名字", text: $nameDraft)
+            Button("好") {
+                model.rename(nameDraft)
+                revealedCharacters = Int.max
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("名字多长都可以，太长时会分成几列竖排。")
+        }
         .task { await playReveal() }
     }
 
@@ -59,6 +71,14 @@ struct RevealView: View {
                         .foregroundStyle(.inkOnArt)
                         .padding(.top, 20)
                         .padding(.trailing, 22)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard detailsVisible else { return }
+                            nameDraft = profile?.name ?? ""
+                            renaming = true
+                        }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("轻点可以改名")
                 }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -70,6 +90,10 @@ struct RevealView: View {
                     .lineSpacing(5)
                     .foregroundStyle(.ink.opacity(0.85))
                     .fixedSize(horizontal: false, vertical: true)
+                Label("轻点名字可以改名", systemImage: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.inkSecondary)
+                    .padding(.top, 2)
             }
             .padding(22)
             .opacity(detailsVisible ? 1 : 0)

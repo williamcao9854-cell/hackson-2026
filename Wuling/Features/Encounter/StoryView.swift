@@ -22,20 +22,22 @@ struct StoryView: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("看见你了").eyebrow()
-                    TextField("它叫什么", text: $model.objectName)
+                    Text(model.needsNaming ? "这是……" : "看见你了").eyebrow()
+                    TextField(model.needsNaming ? "它是什么？" : "它叫什么", text: $model.objectName)
                         .font(.system(size: 30, weight: .semibold))
                         .multilineTextAlignment(.center)
                         .focused($focusedField, equals: .name)
                         .submitLabel(.done)
-                    Text("可以改成你对它的称呼，比如「外婆的闹钟」")
+                    Text(model.needsNaming ? "我没认出来，告诉我它是什么吧，比如「外婆的闹钟」" : "可以改成你对它的称呼，比如「外婆的闹钟」")
                         .font(.system(size: 13))
                         .foregroundStyle(.inkSecondary)
 
-                    let others = model.candidates.filter { $0.chinese != model.objectName }
+                    let others = model.candidates.isEmpty && model.needsNaming
+                        ? Self.commonKinds
+                        : model.candidates.filter { $0.chinese != model.objectName }
                     if !others.isEmpty {
                         HStack(spacing: 8) {
-                            Text("是不是")
+                            Text(model.candidates.isEmpty ? "比如" : "是不是")
                                 .font(.system(size: 13))
                                 .foregroundStyle(.inkSecondary)
                             ForEach(Array(others.prefix(3)), id: \.self) { kind in
@@ -128,6 +130,7 @@ struct StoryView: View {
             }
             .buttonStyle(.glassProminent)
             .tint(.vermilion)
+            .disabled(model.needsNaming && model.objectName.trimmingCharacters(in: .whitespaces).isEmpty)
             .padding(.horizontal, Metrics.gutter)
             .padding(.bottom, 8)
         }
@@ -141,6 +144,11 @@ struct StoryView: View {
                 lifted = true
             }
         }
+    }
+
+    /// 完全认不出来时给的几个常见选项
+    private static let commonKinds: [ObjectKind] = ["跑鞋", "马克杯", "玩偶熊", "耳机"].compactMap {
+        ObjectCatalog.kind(matchingChinese: $0)
     }
 
     private func section<Content: View>(title: String, note: String? = nil, @ViewBuilder content: () -> Content) -> some View {

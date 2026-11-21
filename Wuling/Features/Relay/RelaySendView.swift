@@ -30,14 +30,11 @@ struct RelaySendView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     preview
 
-                    field(title: "你的名章", note: "1～4 个字，会刻在它身上，一直传下去") {
+                    field(title: "你的名章", note: "会刻在它身上，一直传下去") {
                         TextField("比如：小林", text: $sealDraft)
                             .font(.system(size: 20, weight: .semibold, design: .serif))
                             .focused($focused)
                             .disabled(stamped)
-                            .onChange(of: sealDraft) { _, value in
-                                if value.count > 4 { sealDraft = String(value.prefix(4)) }
-                            }
                     }
 
                     field(title: "写给下一位主人", note: nil) {

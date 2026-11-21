@@ -95,14 +95,15 @@ gh auth setup-git
 Wuling/
 ├── App/                    入口、预览数据
 ├── Design/                 设计系统：颜色、字体、和纸背景
-│   └── Components/         竖排文字、朱印、贴纸、长按送别、消散粒子
+│   ├── Components/         竖排文字、朱印、贴纸、长按送别、消散粒子
+│   └── Landscape/          首页会呼吸的水墨山水（时辰、节气、河灯、鸿雁）
 ├── Features/
 │   ├── Collection/         图鉴首页、物灵详情、分享卡片、关于
 │   ├── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
 │   └── Relay/              传灵：盖章传出、接收物灵
 ├── Models/                 物灵（SwiftData）、陪伴时长、传灵章节与胶囊
-├── Services/               抠图、Core ML 识别、取色、起名、提示词、图像 API、相机
-└── Resources/              App 图标、MobileNetV2 模型、API 配置模板
+├── Services/               抠图、Core ML 识别、取色、起名、提示词、图像 API、相机、节气
+└── Resources/              App 图标、FastViT 识别模型、API 配置模板
 Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本
 tools/generate_poster.py    调用 AMD API 生成项目海报

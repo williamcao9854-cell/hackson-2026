@@ -138,9 +138,6 @@ struct ArrivalView: View {
                         .background(Color.card, in: Capsule())
                         .overlay { Capsule().strokeBorder(Color.hairline, lineWidth: 1) }
                         .frame(maxWidth: 150)
-                        .onChange(of: sealDraft) { _, value in
-                            if value.count > 4 { sealDraft = String(value.prefix(4)) }
-                        }
 
                     Button {
                         receive()
