@@ -71,6 +71,21 @@ struct ArrivalView: View {
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) { bottom }
         }
+        .overlay(alignment: .topLeading) {
+            if !received {
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .foregroundStyle(.ink)
+                .padding(.leading, Metrics.gutter)
+                .padding(.top, 8)
+                .accessibilityLabel("暂不收下")
+            }
+        }
         .foregroundStyle(.ink)
         .sensoryFeedback(.impact(weight: .heavy), trigger: received)
         .onAppear {

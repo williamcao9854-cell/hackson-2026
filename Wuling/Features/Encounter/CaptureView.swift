@@ -40,12 +40,19 @@ struct CaptureView: View {
         .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: focusTick)
         .onDisappear { camera.stop() }
         .onChange(of: pickerItem) { _, item in
-            guard let item else { return }
+            guard let item, !isCapturing else { return }
+            // 加载相册大图期间锁住快门、停掉相机，避免同时处理两张照片
+            isCapturing = true
+            camera.stop()
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     await model.usePhoto(image)
+                } else {
+                    status = await camera.start()
                 }
+                isCapturing = false
+                pickerItem = nil
             }
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: shutterCount)

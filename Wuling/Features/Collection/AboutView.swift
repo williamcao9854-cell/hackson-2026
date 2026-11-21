@@ -37,7 +37,7 @@ struct AboutView: View {
 
                     block(title: "隐私") {
                         row("lock.shield", "抠图、物品识别、起名，全部在这台手机上完成")
-                        row("photo.badge.checkmark", "照片不会上传，生成插画时只发送「物品类别、颜色、陪伴时长」这几项文字")
+                        row("photo.badge.checkmark", "照片不会上传。生成插画时只发送几句文字：物品类别、你给它起的称呼、颜色、陪伴时长、勾选的岁月痕迹，以及手机上看图写下的一句外观描述")
                         row("text.book.closed", "你写下的记忆只保存在本机")
                     }
 

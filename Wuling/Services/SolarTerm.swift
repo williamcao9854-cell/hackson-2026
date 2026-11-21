@@ -7,6 +7,8 @@ import Foundation
 struct SolarTerm: Equatable, Sendable {
     /// 0 = 春分，1 = 清明 …… 23 = 惊蛰
     let index: Int
+    /// 本节气的第几候：0、1、2（每候 5°，约五天）
+    let pentadIndex: Int
 
     static let names = [
         "春分", "清明", "谷雨", "立夏", "小满", "芒种",
@@ -15,12 +17,32 @@ struct SolarTerm: Equatable, Sendable {
         "冬至", "小寒", "大寒", "立春", "雨水", "惊蛰",
     ]
 
-    /// 每个节气的第一候（七十二候，出自《逸周书·时训解》）
-    static let firstPentads = [
-        "玄鸟至", "桐始华", "萍始生", "蝼蝈鸣", "苦菜秀", "螳螂生",
-        "鹿角解", "温风至", "腐草为萤", "凉风至", "鹰乃祭鸟", "鸿雁来",
-        "雷始收声", "鸿雁来宾", "豺乃祭兽", "水始冰", "虹藏不见", "鹖鴠不鸣",
-        "蚯蚓结", "雁北乡", "鸡始乳", "东风解冻", "獭祭鱼", "桃始华",
+    /// 七十二候（出自《逸周书·时训解》），每个节气三候，顺序与 names 相同
+    static let pentads: [[String]] = [
+        ["玄鸟至", "雷乃发声", "始电"],                 // 春分
+        ["桐始华", "田鼠化为鴽", "虹始见"],             // 清明
+        ["萍始生", "鸣鸠拂其羽", "戴胜降于桑"],         // 谷雨
+        ["蝼蝈鸣", "蚯蚓出", "王瓜生"],                 // 立夏
+        ["苦菜秀", "靡草死", "麦秋至"],                 // 小满
+        ["螳螂生", "鵙始鸣", "反舌无声"],               // 芒种
+        ["鹿角解", "蜩始鸣", "半夏生"],                 // 夏至
+        ["温风至", "蟋蟀居宇", "鹰始挚"],               // 小暑
+        ["腐草为萤", "土润溽暑", "大雨时行"],           // 大暑
+        ["凉风至", "白露降", "寒蝉鸣"],                 // 立秋
+        ["鹰乃祭鸟", "天地始肃", "禾乃登"],             // 处暑
+        ["鸿雁来", "玄鸟归", "群鸟养羞"],               // 白露
+        ["雷始收声", "蛰虫坯户", "水始涸"],             // 秋分
+        ["鸿雁来宾", "雀入大水为蛤", "菊有黄华"],       // 寒露
+        ["豺乃祭兽", "草木黄落", "蛰虫咸俯"],           // 霜降
+        ["水始冰", "地始冻", "雉入大水为蜃"],           // 立冬
+        ["虹藏不见", "天气上升地气下降", "闭塞而成冬"], // 小雪
+        ["鹖鴠不鸣", "虎始交", "荔挺出"],               // 大雪
+        ["蚯蚓结", "麋角解", "水泉动"],                 // 冬至
+        ["雁北乡", "鹊始巢", "雉始雊"],                 // 小寒
+        ["鸡始乳", "征鸟厉疾", "水泽腹坚"],             // 大寒
+        ["东风解冻", "蛰虫始振", "鱼陟负冰"],           // 立春
+        ["獭祭鱼", "候雁北", "草木萌动"],               // 雨水
+        ["桃始华", "仓庚鸣", "鹰化为鸠"],               // 惊蛰
     ]
 
     enum Season: String, Sendable {
@@ -28,7 +50,8 @@ struct SolarTerm: Equatable, Sendable {
     }
 
     var name: String { Self.names[index] }
-    var pentad: String { Self.firstPentads[index] }
+    /// 当下这一候
+    var pentad: String { Self.pentads[index][pentadIndex] }
 
     var season: Season {
         switch index {
@@ -39,12 +62,16 @@ struct SolarTerm: Equatable, Sendable {
         }
     }
 
-    init(index: Int) {
+    init(index: Int, pentadIndex: Int = 0) {
         self.index = ((index % 24) + 24) % 24
+        self.pentadIndex = min(2, max(0, pentadIndex))
     }
 
     init(date: Date) {
-        self.init(index: Int(Self.solarLongitude(at: date) / 15))
+        let longitude = Self.solarLongitude(at: date)
+        let index = Int(longitude / 15)
+        let withinTerm = longitude - Double(index) * 15
+        self.init(index: index, pentadIndex: Int(withinTerm / 5))
     }
 
     /// 太阳视黄经（度，0..<360）

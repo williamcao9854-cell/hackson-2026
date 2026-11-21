@@ -138,12 +138,17 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
         }
     }
 
+    /// 拍一张。`continuation` 只在相机队列上读写，避免和回调线程竞争；
+    /// 相机没在运行（比如刚切到后台）时直接返回 nil，避免 AVFoundation 抛异常。
     func capturePhoto() async -> UIImage? {
-        // 上一张还没拍完时忽略，避免覆盖等待中的回调
-        guard continuation == nil else { return nil }
-        return await withCheckedContinuation { continuation in
-            self.continuation = continuation
+        await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
             queue.async { [self] in
+                guard self.continuation == nil, session.isRunning,
+                      output.connection(with: .video)?.isEnabled == true else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                self.continuation = continuation
                 let settings = AVCapturePhotoSettings()
                 settings.photoQualityPrioritization = .balanced
                 output.capturePhoto(with: settings, delegate: self)
@@ -153,9 +158,11 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         let image = photo.fileDataRepresentation().flatMap(UIImage.init(data:))
-        let pending = continuation
-        continuation = nil
-        pending?.resume(returning: image)
+        queue.async { [self] in
+            let pending = continuation
+            continuation = nil
+            pending?.resume(returning: image)
+        }
     }
 }
 

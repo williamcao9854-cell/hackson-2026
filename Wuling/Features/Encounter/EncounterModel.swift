@@ -53,10 +53,15 @@ final class EncounterModel {
     var hasUnsavedSpirit: Bool { profile != nil && savedSpirit == nil }
 
     /// 用户改了名字时（比如"外婆的闹钟"），尽量换成对应的物品类别，让生成结果跟着变
+    /// 用户手动输入、目录里也没有的物品名，翻译成的英文（由端侧模型提供）
+    private var translatedEnglish: [String: String] = [:]
+
     private var resolvedObject: ObjectKind {
         let name = objectName.trimmingCharacters(in: .whitespacesAndNewlines)
         if name.isEmpty || name == object.chinese { return object }
-        return ObjectCatalog.kind(matchingChinese: name) ?? object
+        if let known = ObjectCatalog.kind(matchingChinese: name) { return known }
+        // 目录里没有（比如"魔方"）：用户已经否定了识别结果，不再沿用它
+        return ObjectKind(chinese: name, english: translatedEnglish[name] ?? "", family: .other)
     }
 
     func choose(_ kind: ObjectKind) {
@@ -163,6 +168,11 @@ final class EncounterModel {
 
     func awaken() async {
         withAnimation(.wlCalm) { stage = .awakening }
+        let typedName = objectName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if resolvedObject.english.isEmpty, !typedName.isEmpty,
+           let english = await OnDeviceSpiritWriter.englishName(for: typedName) {
+            translatedEnglish[typedName] = english
+        }
         let seed = self.seed
         let started = Date.now
 

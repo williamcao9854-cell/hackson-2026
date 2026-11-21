@@ -11,6 +11,7 @@ struct CollectionView: View {
     @State private var incoming: IncomingSpirit?
     @State private var incomingError: String?
     @State private var showingOnboarding = false
+    @State private var showingReceive = false
     @AppStorage("wuling.onboarded") private var onboarded = false
     private let gardenTip = GardenTip()
     @Namespace private var zoom
@@ -107,10 +108,13 @@ struct CollectionView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                encounterButton
+                bottomBar
             }
             .fullScreenCover(isPresented: $showingEncounter) {
                 EncounterView()
+            }
+            .fullScreenCover(isPresented: $showingReceive) {
+                ReceiveView()
             }
             .sheet(isPresented: $showingAbout) {
                 AboutView()
@@ -135,9 +139,12 @@ struct CollectionView: View {
                 guard url.pathExtension.lowercased() == SpiritCapsule.fileExtension else { return }
                 do {
                     let capsule = try SpiritCapsule.read(from: url)
-                    if showingEncounter {
-                        // 先关掉正在进行的「遇见」，等它退场后再弹出，否则 SwiftUI 会丢掉这次弹窗
+                    if showingEncounter || showingAbout || showingOnboarding || showingReceive {
+                        // 先关掉正在打开的页面，等它退场后再弹出，否则 SwiftUI 会丢掉这次弹窗
                         showingEncounter = false
+                        showingAbout = false
+                        showingOnboarding = false
+                        showingReceive = false
                         Task {
                             try? await Task.sleep(for: .milliseconds(700))
                             incoming = IncomingSpirit(capsule: capsule)
@@ -189,19 +196,36 @@ struct CollectionView: View {
         .accessibilityLabel("\(text)，\(count) 个")
     }
 
-    private var encounterButton: some View {
-        Button {
-            showingEncounter = true
-        } label: {
-            Label("遇见", systemImage: "camera.viewfinder")
-                .font(.system(size: 17, weight: .semibold))
-                .padding(.horizontal, 22)
-                .padding(.vertical, 6)
+    /// 底部：遇见（拍一件旧物）· 接灵（收下别人传来的物灵）
+    private var bottomBar: some View {
+        GlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                Button {
+                    showingEncounter = true
+                } label: {
+                    Label("遇见", systemImage: "camera.viewfinder")
+                        .font(.system(size: 17, weight: .semibold))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(.vermilion)
+                .accessibilityHint("拍下一件旧物，唤醒它的物灵")
+
+                Button {
+                    showingReceive = true
+                } label: {
+                    Label("接灵", systemImage: "bird")
+                        .font(.system(size: 17, weight: .semibold))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glass)
+                .foregroundStyle(.ink)
+                .accessibilityHint("收下身边的人传给你的物灵")
+            }
         }
-        .buttonStyle(.glassProminent)
-        .tint(.vermilion)
         .padding(.bottom, 8)
-        .accessibilityHint("拍下一件旧物，唤醒它的物灵")
     }
 }
 

@@ -78,7 +78,10 @@ struct EncounterView: View {
         }
         .foregroundStyle(.ink)
         .interactiveDismissDisabled(model.stage == .awakening || model.hasUnsavedSpirit)
-        .sheet(item: $relaySpirit, onDismiss: { dismiss() }) { spirit in
+        .sheet(item: $relaySpirit, onDismiss: {
+            // 真的传出去了才离开；点了取消就回到初见，还可以改选送别或同住
+            if model.savedSpirit?.isRelayed == true { dismiss() }
+        }) { spirit in
             RelaySendView(spirit: spirit)
         }
         .confirmationDialog("要放下这个物灵吗？", isPresented: $confirmingClose, titleVisibility: .visible) {

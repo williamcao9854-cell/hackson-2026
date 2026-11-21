@@ -44,5 +44,12 @@
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>物灵需要连接身边的另一台手机，把物灵面对面传给对方。不会访问其他设备上的任何内容。</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_wuling-relay._tcp</string>
+		<string>_wuling-relay._udp</string>
+	</array>
 </dict>
 </plist>

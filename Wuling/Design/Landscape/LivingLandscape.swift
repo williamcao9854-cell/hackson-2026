@@ -8,6 +8,7 @@ struct LivingLandscape: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let motion = MotionParallax.shared
     @State private var start = Date.now
+    @State private var motionStarted = false
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
@@ -16,8 +17,16 @@ struct LivingLandscape: View {
                 scene.draw(context, size: size, t: t, tilt: reduceMotion ? .zero : motion.tilt)
             }
         }
-        .onAppear { if !reduceMotion { motion.start() } }
-        .onDisappear { motion.stop() }
+        .onAppear {
+            guard !reduceMotion, !motionStarted else { return }
+            motion.start()
+            motionStarted = true
+        }
+        .onDisappear {
+            guard motionStarted else { return }
+            motion.stop()
+            motionStarted = false
+        }
         .accessibilityHidden(true)
     }
 }

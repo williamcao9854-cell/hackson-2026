@@ -18,7 +18,10 @@ enum SpiritPrompt {
     """
 
     static func make(for seed: SpiritSeed) -> String {
-        let object = seed.object.english
+        // 用户输入了目录里没有的东西（比如"魔方"）且没能翻译成英文时，english 为空：
+        // 不再沿用之前识别错的类别，只用一个中性的说法，并把用户的称呼告诉模型
+        let english = seed.object.english.trimmingCharacters(in: .whitespacesAndNewlines)
+        let object = english.isEmpty ? "cherished everyday object" : english
         var lines: [String] = []
         lines.append("""
         A gentle object spirit from East Asian folklore, the kind said to awaken inside things that have been cherished for a long time. \
@@ -41,8 +44,10 @@ enum SpiritPrompt {
     /// 用户改过名字时（比如"外婆的闹钟"），把这个称呼也告诉模型
     private static func nickname(for seed: SpiritSeed) -> String {
         let name = seed.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty, name != seed.object.chinese else { return "" }
-        return " (its owner lovingly calls it \u{201C}\(name)\u{201D})"
+        let englishMissing = seed.object.english.trimmingCharacters(in: .whitespaces).isEmpty
+        guard !name.isEmpty, name != seed.object.chinese || englishMissing else { return "" }
+        let hint = englishMissing ? ", a Chinese name; draw the object this name refers to" : ""
+        return " (its owner lovingly calls it \u{201C}\(name)\u{201D}\(hint))"
     }
 
     private static func colorPhrase(for seed: SpiritSeed) -> String {

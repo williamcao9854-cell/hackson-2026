@@ -90,7 +90,7 @@ struct OnboardingView: View {
             Text("只在你的手机上").font(.system(size: 24, weight: .semibold))
             VStack(alignment: .leading, spacing: 14) {
                 Label("抠图、识别、起名，都在手机上完成", systemImage: "lock.shield")
-                Label("照片不会上传，画物灵时只发送几句文字描述", systemImage: "photo.badge.checkmark")
+                Label("照片不会上传，画物灵时只发送几句文字描述（类别、称呼、颜色、外观）", systemImage: "photo.badge.checkmark")
                 Label("你写下的记忆，只保存在这台手机上", systemImage: "text.book.closed")
             }
             .font(.system(size: 15))

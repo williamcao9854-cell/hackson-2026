@@ -68,7 +68,10 @@ struct SpiritDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             FigureCache.ensureFigure(for: spirit, in: modelContext)
-            if figureImage == nil { mode = .painting }
+            if spirit.figureImageData == nil { mode = .painting }
+        }
+        .task(id: spirit.figureImageData?.count ?? 0) {
+            figureImage = await ImageDecoding.decode(spirit.figureImageData)
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -145,9 +148,8 @@ struct SpiritDetailView: View {
 
     // MARK: - 立牌 / 画作 / 原貌
 
-    private var figureImage: UIImage? {
-        spirit.figureImageData.flatMap(UIImage.init(data:))
-    }
+    /// 解码好的立牌图（后台解码一次并缓存）
+    @State private var figureImage: UIImage?
 
     private var availableModes: [ArtMode] {
         ArtMode.allCases.filter { mode in

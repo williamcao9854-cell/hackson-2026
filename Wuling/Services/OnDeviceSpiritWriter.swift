@@ -59,6 +59,25 @@ enum OnDeviceSpiritWriter {
     }
     #endif
 
+    /// 把用户输入的中文物品名翻译成简短英文（例如 魔方 → Rubik's cube），只在设备端完成。
+    /// 不支持 Apple 智能时返回 nil，提示词会改用中性说法 + 中文称呼。
+    static func englishName(for chinese: String) async -> String? {
+        #if canImport(FoundationModels)
+        guard case .available = SystemLanguageModel.default.availability else { return nil }
+        let reply = try? await withTimeout(seconds: 5, operation: { () async throws -> String? in
+            let session = LanguageModelSession(instructions: "Translate the name of an everyday object from Chinese to plain English. Reply with the English name only, 1 to 4 words, lowercase, no punctuation.")
+            let response = try await session.respond(to: chinese)
+            return response.content
+        })
+        guard let raw = reply ?? nil else { return nil }
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+        guard !cleaned.isEmpty, cleaned.count <= 40, !cleaned.contains("\n") else { return nil }
+        return cleaned
+        #else
+        return nil
+        #endif
+    }
+
     /// 超时就放弃，退回模板，不让用户久等。
     private static func withTimeout<T: Sendable>(seconds: Double, operation: @escaping @Sendable () async throws -> T?) async throws -> T? {
         try await withThrowingTaskGroup(of: T?.self) { group in

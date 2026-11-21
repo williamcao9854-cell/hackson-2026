@@ -74,10 +74,12 @@ private struct GardenFigure: View {
     let spirit: Spirit
     var height: CGFloat
     @Environment(\.modelContext) private var modelContext
+    /// 解码好的立牌图：只在图片变化时解码一次，并且在后台线程
+    @State private var image: UIImage?
 
     var body: some View {
         VStack(spacing: 2) {
-            if let data = spirit.figureImageData ?? spirit.stickerImageData, let image = UIImage(data: data) {
+            if let image {
                 StandeeView(figure: image, interactive: false)
                     .frame(width: height * 0.9, height: height)
             } else {
@@ -95,6 +97,10 @@ private struct GardenFigure: View {
         }
         .foregroundStyle(.ink)
         .onAppear { FigureCache.ensureFigure(for: spirit, in: modelContext) }
+        .task(id: spirit.figureImageData?.count ?? spirit.stickerImageData?.count ?? 0) {
+            let data = spirit.figureImageData ?? spirit.stickerImageData
+            image = await ImageDecoding.decode(data)
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(spirit.name)，\(spirit.objectName)，同住")
         .accessibilityAddTraits(.isButton)

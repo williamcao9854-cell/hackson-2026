@@ -18,6 +18,7 @@ struct RelaySendView: View {
     @State private var shareURL: URL?
     @State private var showingShare = false
     @State private var sent = false
+    @State private var showingNearby = false
     @State private var shareError: String?
     @FocusState private var focused: Bool
 
@@ -28,6 +29,7 @@ struct RelaySendView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
+                    RelaySteps(current: sent ? 3 : (stamped ? 2 : 1))
                     preview
 
                     field(title: "你的名章", note: "会刻在它身上，一直传下去") {
@@ -166,15 +168,36 @@ struct RelaySendView: View {
                     .padding(.vertical, 12)
             } else if let capsule {
                 Button {
-                    share(capsule)
+                    showingNearby = true
                 } label: {
-                    Label("传给下一位", systemImage: "square.and.arrow.up")
+                    Label("面对面传给 TA", systemImage: "person.2.wave.2")
                         .font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
                 }
                 .buttonStyle(.glassProminent)
                 .tint(.vermilion)
+                .sheet(isPresented: $showingNearby) {
+                    NearbySendView(capsule: capsule, seal: normalizedSeal) {
+                        markRelayed()
+                    } onUseShareSheet: {
+                        // 等面对面页面退场后再打开系统分享
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(600))
+                            share(capsule)
+                        }
+                    }
+                }
+
+                Button {
+                    share(capsule)
+                } label: {
+                    Label("其他方式发送（隔空投送、微信……）", systemImage: "square.and.arrow.up")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.inkSecondary)
+                .padding(.vertical, 2)
 
                 HStack(spacing: 12) {
                     Button {
@@ -202,7 +225,7 @@ struct RelaySendView: View {
                     .buttonStyle(.glass)
                     .foregroundStyle(.ink)
                 }
-                Text("隔空投送、微信、信息都可以，对方用物灵打开就能收下")
+                Text("面对面传：请对方打开物灵，点首页的「接灵」")
                     .font(.system(size: 12))
                     .foregroundStyle(.inkSecondary)
             } else {

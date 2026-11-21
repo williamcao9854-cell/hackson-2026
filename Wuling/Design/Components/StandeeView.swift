@@ -14,10 +14,11 @@ struct StandeeView: View {
     @State private var drag: CGSize = .zero
     @State private var hop = false
     @State private var phaseSeed = Double.random(in: 0...10)
+    @State private var motionStarted = false
 
     var body: some View {
         GeometryReader { geo in
-            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { timeline in
+            TimelineView(.animation(minimumInterval: interactive ? 1.0 / 30 : 1.0 / 15, paused: reduceMotion)) { timeline in
                 let angles = Self.angles(time: timeline.date.timeIntervalSinceReferenceDate,
                                          seed: phaseSeed, sway: interactive ? 7 : 5,
                                          tilt: reduceMotion ? CGSize.zero : motion.tilt,
@@ -36,8 +37,16 @@ struct StandeeView: View {
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: hop)
-        .onAppear { if !reduceMotion { motion.start() } }
-        .onDisappear { if !reduceMotion { motion.stop() } }
+        .onAppear {
+            guard !reduceMotion, !motionStarted else { return }
+            motion.start()
+            motionStarted = true
+        }
+        .onDisappear {
+            guard motionStarted else { return }
+            motion.stop()
+            motionStarted = false
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("物灵立牌")
         .accessibilityHint(interactive ? "左右拖动可以转动它" : "")
@@ -74,7 +83,8 @@ struct StandeeView: View {
         let turn = CGFloat(sin(yaw * Double.pi / 180))
         // 每层剪影错开的距离：转得越多，侧边露得越多
         let step: CGFloat = -turn * max(0.8, w / 170)
-        let layers = 7
+        // 详情页的大立牌 7 层；园林里的小立牌 4 层就够了，省电
+        let layers = interactive ? 7 : 4
         let shadowWidth: CGFloat = w * 0.62 * (1 - abs(turn) * 0.2)
         let shadowHeight: CGFloat = max(6, h * 0.05)
         let shadowBlur: CGFloat = max(3, w / 40)
@@ -100,11 +110,18 @@ struct StandeeView: View {
                 .blur(radius: shadowBlur)
                 .offset(x: shadowX, y: shadowY)
 
-            // 玻璃底座
-            Capsule()
-                .fill(Color.white.opacity(0.18))
-                .frame(width: baseWidth, height: baseHeight)
-                .glassEffect(.regular, in: Capsule())
+            // 底座：大立牌用 Liquid Glass，园林里的小立牌用普通半透明，减轻渲染压力
+            if interactive {
+                Capsule()
+                    .fill(Color.white.opacity(0.18))
+                    .frame(width: baseWidth, height: baseHeight)
+                    .glassEffect(.regular, in: Capsule())
+            } else {
+                Capsule()
+                    .fill(Color.white.opacity(0.45))
+                    .overlay { Capsule().strokeBorder(Color.white.opacity(0.7), lineWidth: 0.5) }
+                    .frame(width: baseWidth, height: baseHeight)
+            }
 
             // 立牌本体
             ZStack {
