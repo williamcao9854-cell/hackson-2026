@@ -9,7 +9,6 @@ struct PaperBackground: View {
         color
             .overlay {
                 PaperFibers()
-                    .drawingGroup()
                     .allowsHitTesting(false)
             }
             .ignoresSafeArea()
@@ -23,7 +22,7 @@ private struct PaperFibers: View {
         Canvas { context, size in
             var rng = SeededRandom(seed: 20261121)
             let fiberColor: Color = colorScheme == .dark ? .white : Color(red: 0.42, green: 0.35, blue: 0.25)
-            let count = Int(size.width * size.height / 900)
+            let count = Int(size.width * size.height / 1400)
             for _ in 0..<count {
                 let x = rng.next() * size.width
                 let y = rng.next() * size.height

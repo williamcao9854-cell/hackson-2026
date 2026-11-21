@@ -8,7 +8,6 @@ struct WulingApp: App {
 
     init() {
         container = try! ModelContainer(for: Spirit.self)
-        try? Tips.configure([.displayFrequency(.immediate)])
         // 自动截图（tools/mac_build_report.sh）时带上 -demo-data，让图鉴里有内容可看
         if ProcessInfo.processInfo.arguments.contains("-demo-data") {
             UserDefaults.standard.set(true, forKey: "wuling.onboarded")
@@ -20,6 +19,9 @@ struct WulingApp: App {
         WindowGroup {
             CollectionView()
                 .tint(.vermilion)
+                .task {
+                    try? Tips.configure([.displayFrequency(.immediate)])
+                }
         }
         .modelContainer(container)
     }

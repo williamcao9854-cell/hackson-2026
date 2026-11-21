@@ -16,7 +16,7 @@ struct StandeeView: View {
     @State private var hop = false
     @State private var phaseSeed = Double.random(in: 0...10)
     @State private var motionStarted = false
-    @State private var isVisible = false
+    @State private var isVisible = true
 
     var body: some View {
         let paused = reduceMotion || !isVisible || scenePhase != .active

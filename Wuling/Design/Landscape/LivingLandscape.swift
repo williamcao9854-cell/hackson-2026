@@ -11,7 +11,7 @@ struct LivingLandscape: View {
     private let motion = MotionParallax.shared
     @State private var start = Date.now
     @State private var motionStarted = false
-    @State private var isVisible = false
+    @State private var isVisible = true
 
     var body: some View {
         let paused = reduceMotion || !isVisible || scenePhase != .active
