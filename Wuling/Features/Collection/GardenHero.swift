@@ -18,16 +18,15 @@ struct GardenHero: View {
 
                 let shown = Array(living.prefix(maxFigures))
                 ForEach(Array(shown.enumerated()), id: \.element.id) { index, spirit in
-                    let slot = Self.slot(index: index, count: shown.count)
-                    let height = min(110, geo.size.height * 0.16) * slot.scale
+                    let placement = Self.placement(index: index, count: shown.count, in: geo.size)
                     NavigationLink {
                         SpiritDetailView(spirit: spirit)
                     } label: {
-                        GardenFigure(spirit: spirit, height: height)
+                        GardenFigure(spirit: spirit, height: placement.height)
                     }
                     .buttonStyle(.plain)
-                    .position(x: slot.x * geo.size.width, y: slot.y * geo.size.height - height / 2)
-                    .zIndex(slot.scale)
+                    .position(placement.center)
+                    .zIndex(placement.depth)
                 }
 
                 if living.count > maxFigures {
@@ -58,10 +57,15 @@ struct GardenHero: View {
     }
 
     /// 前后两排错落站开：后排小、略高，前排大、靠下
-    static func slot(index: Int, count: Int) -> (x: CGFloat, y: CGFloat, scale: CGFloat) {
-        let x = 0.14 + 0.72 * (CGFloat(index) + 0.5) / CGFloat(max(count, 1))
-        let backRow = count > 2 && index.isMultiple(of: 2) == false
-        return (x, backRow ? 0.84 : 0.94, backRow ? 0.8 : 1)
+    static func placement(index: Int, count: Int, in size: CGSize) -> (center: CGPoint, height: CGFloat, depth: Double) {
+        let slots = CGFloat(max(count, 1))
+        let unitX: CGFloat = 0.14 + 0.72 * (CGFloat(index) + 0.5) / slots
+        let backRow: Bool = count > 2 && !index.isMultiple(of: 2)
+        let unitY: CGFloat = backRow ? 0.84 : 0.94
+        let scale: CGFloat = backRow ? 0.8 : 1
+        let height: CGFloat = min(110, size.height * 0.16) * scale
+        let center = CGPoint(x: unitX * size.width, y: unitY * size.height - height / 2)
+        return (center, height, backRow ? 0 : 1)
     }
 }
 

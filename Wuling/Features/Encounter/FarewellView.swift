@@ -100,11 +100,25 @@ struct FarewellView: View {
             if phase == .sealed {
                 LanternGlyph()
                     .frame(width: 30, height: 30)
-                    .offset(x: lanternProgress * 150, y: 60 + lanternProgress * 210)
-                    .opacity(lanternProgress < 0.8 ? 1 : Double((1 - lanternProgress) / 0.2))
+                    .offset(x: lanternOffset.width, y: lanternOffset.height)
+                    .opacity(lanternOpacity)
                     .transition(.opacity)
             }
         }
+    }
+
+    /// 河灯从物灵身边向右下方漂走
+    private var lanternOffset: CGSize {
+        let x: CGFloat = lanternProgress * 150
+        let y: CGFloat = 60 + lanternProgress * 210
+        return CGSize(width: x, height: y)
+    }
+
+    /// 最后一段路慢慢淡出
+    private var lanternOpacity: Double {
+        let progress = Double(lanternProgress)
+        if progress < 0.8 { return 1 }
+        return (1 - progress) / 0.2
     }
 
     private var particleColors: [Color] {

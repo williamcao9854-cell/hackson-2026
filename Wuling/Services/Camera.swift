@@ -99,8 +99,10 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
     /// 设置缩放（显示倍率）。点镜头按钮时平滑过渡，双指缩放时直接跟手。
     func setZoom(_ display: CGFloat, smooth: Bool) {
         guard let device else { return }
-        let factor = max(device.minAvailableVideoZoomFactor,
-                         min(display * displayBase, min(device.maxAvailableVideoZoomFactor, maxDisplayZoom * displayBase)))
+        let lower: CGFloat = device.minAvailableVideoZoomFactor
+        let upper: CGFloat = min(device.maxAvailableVideoZoomFactor, maxDisplayZoom * displayBase)
+        let wanted: CGFloat = display * displayBase
+        let factor: CGFloat = max(lower, min(wanted, upper))
         queue.async {
             guard (try? device.lockForConfiguration()) != nil else { return }
             if smooth {

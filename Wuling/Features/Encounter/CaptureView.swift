@@ -126,15 +126,19 @@ struct CaptureView: View {
         GlassEffectContainer(spacing: 6) {
             HStack(spacing: 6) {
                 ForEach(lensPresets, id: \.self) { preset in
-                    let isCurrent = currentPreset == preset
+                    let isCurrent: Bool = currentPreset == preset
+                    let label: String = isCurrent ? Self.format(zoom) + "×" : Self.format(preset)
+                    let fontSize: CGFloat = isCurrent ? 13 : 12
+                    let side: CGFloat = isCurrent ? 40 : 32
+                    let labelColor: Color = isCurrent ? Color(red: 1, green: 0.84, blue: 0.4) : Color.white
                     Button {
                         zoom = preset
                         camera.setZoom(preset, smooth: true)
                     } label: {
-                        Text(isCurrent ? Self.format(zoom) + "×" : Self.format(preset))
-                            .font(.system(size: isCurrent ? 13 : 12, weight: .semibold).monospacedDigit())
-                            .foregroundStyle(isCurrent ? Color(red: 1, green: 0.84, blue: 0.4) : .white)
-                            .frame(width: isCurrent ? 40 : 32, height: isCurrent ? 40 : 32)
+                        Text(label)
+                            .font(Font.system(size: fontSize, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(labelColor)
+                            .frame(width: side, height: side)
                     }
                     .buttonStyle(.plain)
                     .glassEffect(.clear.interactive(), in: Circle())

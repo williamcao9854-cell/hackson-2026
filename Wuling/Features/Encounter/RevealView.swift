@@ -152,8 +152,14 @@ struct RevealView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .glassEffect(prominent ? .regular.tint(Color.vermilion.opacity(0.18)).interactive() : .regular.interactive(),
-                     in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .glassEffect(choiceGlass(prominent: prominent), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+
+    private func choiceGlass(prominent: Bool) -> Glass {
+        if prominent {
+            return Glass.regular.tint(Color.vermilion.opacity(0.18)).interactive()
+        }
+        return Glass.regular.interactive()
     }
 
     private func playReveal() async {
