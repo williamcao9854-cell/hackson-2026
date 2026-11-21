@@ -3,8 +3,72 @@
 > 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
-技术栈：Swift · SwiftUI · Core ML · AMD 图像生成 API
+技术栈：Swift · SwiftUI · Core ML · Vision · Foundation Models · AMD 图像生成 API
 
-- 📐 **[开发计划](docs/PLAN.md)**：设计调研、设计语言、技术方案、里程碑
+- 📐 [开发计划](docs/PLAN.md)：设计调研、设计语言「和纸与朱印」、技术方案
 - 💡 [创意方案 v4](docs/IDEAS-v4.md)：物灵是从这里选出来的
 - 🗂️ 历史方案：[v3](docs/IDEAS-v3.md) · [v2](docs/IDEAS-v2.md) · [v1](docs/PRODUCT.md)
+
+---
+
+## 在 Mac 上运行
+
+**需要**：Xcode 26 或更高版本；真机需要 iOS 26 或更高版本
+
+1. 拉取代码
+   ```bash
+   git clone git@github.com:williamcao9854-cell/hackson-2026.git
+   cd hackson-2026
+   ```
+2. 双击打开 `Wuling.xcodeproj`
+3. 左侧选中项目 **Wuling** → **Signing & Capabilities** → **Team** 选你自己的 Apple ID
+   （如果提示 Bundle Identifier 已被占用，把 `com.hackson2026.wuling` 改成别的，比如加上你的名字）
+4. 顶部选择你的 iPhone 或模拟器，按 **⌘R** 运行
+
+### 真机还是模拟器？
+| | 真机 | 模拟器 |
+|---|---|---|
+| 拍照 | ✅ | ❌ 没有相机，可以从相册选图 |
+| 主体抠图（Vision） | ✅ | ⚠️ 可能不支持，会自动退回"照片贴纸" |
+| Core ML 识别 | ✅ | ✅ |
+| 设备端起名（Foundation Models） | ✅ 支持 Apple 智能的机型 | ⚠️ 取决于 Mac，不可用时自动用模板起名 |
+
+**路演请用真机演示。**
+
+### 接入 AMD 图像生成 API（可选）
+1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
+2. 填入 API 地址、Key、模型名
+3. 重新运行
+
+`Secrets.plist` 已加入 `.gitignore`，**不会被提交**。没有这个文件时，App 用离线水彩剪影代替生成图，整个流程照样能完整演示。
+接口默认按 OpenAI 兼容的 `/v1/images/generations` 格式调用，格式不同的话只需要改 `Wuling/Services/ImageGeneration.swift`。
+
+### 项目打不开？
+- **备用方案 1**：`brew install xcodegen && xcodegen generate`，会根据 `project.yml` 重新生成项目
+- **备用方案 2**：Xcode 新建一个 iOS App 项目（SwiftUI，最低 iOS 26），删掉自动生成的 Swift 文件，把 `Wuling/` 文件夹整个拖进去，在 Info 里加上相机权限说明 `NSCameraUsageDescription`
+
+### 编译报错？
+这份代码是在没有 Xcode 的环境里写的（已通过 Swift 6.4 语法检查，核心逻辑通过了单元测试），第一次编译可能会有少量报错。**把报错原文复制给 Claude**，很快就能修好。
+
+---
+
+## 代码结构
+
+```
+Wuling/
+├── App/                    入口、预览数据
+├── Design/                 设计系统：颜色、字体、和纸背景
+│   └── Components/         竖排文字、朱印、贴纸、长按送别、消散粒子
+├── Features/
+│   ├── Collection/         图鉴首页、物灵详情、分享卡片、关于
+│   └── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
+├── Models/                 物灵（SwiftData）、陪伴时长
+├── Services/               抠图、Core ML 识别、取色、起名、提示词、图像 API、相机
+└── Resources/              App 图标、MobileNetV2 模型、API 配置模板
+tools/make_icon.py          生成 App 图标的脚本
+```
+
+## 隐私
+- 抠图、物品识别、起名**全部在手机上完成**
+- **照片不上传**。生成插画时只发送"物品类别、颜色、陪伴时长"这几项文字
+- 用户写下的记忆只保存在本机

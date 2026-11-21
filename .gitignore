@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+DerivedData/
+build/
+*.xcuserstate
+*.xccheckout
+
+# API 密钥：绝不提交
+Wuling/Resources/Secrets.plist

@@ -1,0 +1,238 @@
+import SwiftData
+import SwiftUI
+
+/// 物灵详情：大图、竖排名字、它的故事、灵貌 ⇄ 原貌、分享。
+struct SpiritDetailView: View {
+    @Bindable var spirit: Spirit
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showOriginal = false
+    @State private var showingFarewell = false
+    @State private var confirmingDelete = false
+    @State private var shareImage: Image?
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                artwork
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.top, 8)
+
+                info
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.top, 28)
+
+                if spirit.isReleased {
+                    farewellRecord
+                        .padding(.horizontal, Metrics.gutter)
+                        .padding(.top, 32)
+                } else {
+                    livingFooter
+                        .padding(.horizontal, Metrics.gutter)
+                        .padding(.top, 32)
+                }
+            }
+            .padding(.bottom, 48)
+        }
+        .background(PaperBackground())
+        .foregroundStyle(.ink)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if let shareImage {
+                    ShareLink(item: shareImage, preview: SharePreview(spirit.name, image: shareImage)) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("从图鉴中移除", systemImage: "trash", role: .destructive) {
+                        confirmingDelete = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+            }
+        }
+        .confirmationDialog("移除「\(spirit.name)」？", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("移除", role: .destructive) {
+                modelContext.delete(spirit)
+                try? modelContext.save()
+                dismiss()
+            }
+        } message: {
+            Text("它的插画和记忆都会从这台手机上删除。")
+        }
+        .fullScreenCover(isPresented: $showingFarewell) {
+            ZStack {
+                PaperBackground()
+                FarewellView(
+                    sticker: spirit.stickerImageData.flatMap(UIImage.init(data:)),
+                    spiritImageData: spirit.spiritImageData,
+                    spiritName: spirit.name,
+                    palette: spirit.palette,
+                    suggestion: "谢谢你，陪我\(spirit.companionship.phrase)。"
+                ) { note in
+                    spirit.release(note: note)
+                    try? modelContext.save()
+                } onFinish: {
+                    showingFarewell = false
+                    renderShareImage()
+                }
+            }
+            .foregroundStyle(.ink)
+        }
+        .onAppear { renderShareImage() }
+    }
+
+    // MARK: - 插画（灵貌 / 原貌）
+
+    private var artwork: some View {
+        ZStack {
+            if showOriginal, let data = spirit.stickerImageData, let sticker = UIImage(data: data) {
+                StickerView(image: sticker, lifted: true)
+                    .padding(56)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else {
+                SpiritArtView(data: spirit.spiritImageData)
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fit)
+        .background(Color.card)
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(Color.hairline, lineWidth: 1)
+        }
+        .overlay(alignment: .topTrailing) {
+            VerticalText(text: spirit.name, font: .wlSpiritName(40))
+                .padding(.top, 22)
+                .padding(.trailing, 22)
+                .opacity(showOriginal ? 0 : 1)
+        }
+        .overlay(alignment: .bottomLeading) {
+            if spirit.stickerImageData != nil {
+                Button {
+                    withAnimation(.smooth(duration: 0.45)) { showOriginal.toggle() }
+                } label: {
+                    Label(showOriginal ? "灵貌" : "原貌", systemImage: showOriginal ? "sparkles" : "photo")
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 4)
+                }
+                .buttonStyle(.glass)
+                .tint(.ink)
+                .padding(14)
+                .accessibilityHint(showOriginal ? "查看物灵插画" : "查看物品原本的样子")
+            }
+        }
+        .sensoryFeedback(.selection, trigger: showOriginal)
+    }
+
+    // MARK: - 信息
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Tsukumogami · \(WLFormat.serial(spirit.serial))").eyebrow()
+
+            Text(spirit.epithet)
+                .font(.system(size: 26, weight: .semibold))
+
+            Text([spirit.colorName, "相伴\(spirit.companionship.title)", "遇见于 \(WLFormat.date(spirit.createdAt))"]
+                .filter { !$0.isEmpty }
+                .joined(separator: "　·　"))
+                .font(.system(size: 13))
+                .monospacedDigit()
+                .foregroundStyle(.inkSecondary)
+
+            Text(spirit.personality)
+                .font(.wlQuote)
+                .lineSpacing(6)
+                .padding(.top, 6)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !spirit.memory.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("关于它").font(.wlHeadline)
+                    Text(spirit.memory)
+                        .font(.wlBody)
+                        .lineSpacing(5)
+                        .foregroundStyle(.ink.opacity(0.85))
+                }
+                .padding(.top, 18)
+            }
+
+            if spirit.isPlaceholderArt {
+                Label("这张是离线水彩剪影", systemImage: "wifi.slash")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.inkSecondary)
+                    .padding(.top, 6)
+            }
+        }
+    }
+
+    // MARK: - 送别记录 / 同住
+
+    private var farewellRecord: some View {
+        HStack(alignment: .center, spacing: 18) {
+            SealStamp(text: "已送别", size: 60)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("「\(spirit.farewellNote)」")
+                    .font(.wlQuote)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let date = spirit.releasedAt {
+                    Text("送别于 \(WLFormat.date(date))")
+                        .font(.wlCaption)
+                        .monospacedDigit()
+                        .foregroundStyle(.inkSecondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .background(Color.card, in: RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Metrics.cardRadius, style: .continuous)
+                .strokeBorder(Color.hairline, lineWidth: 1)
+        }
+    }
+
+    private var livingFooter: some View {
+        VStack(spacing: 12) {
+            Text("它还和你住在一起。等你准备好了，再为它办一场送别。")
+                .font(.system(size: 14))
+                .foregroundStyle(.inkSecondary)
+                .multilineTextAlignment(.center)
+            Button {
+                showingFarewell = true
+            } label: {
+                Text("送别它")
+                    .font(.system(size: 16, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(.vermilion)
+        }
+    }
+
+    // MARK: - 分享
+
+    private func renderShareImage() {
+        let renderer = ImageRenderer(content: ShareCardView(spirit: spirit).environment(\.colorScheme, .light))
+        renderer.scale = 3
+        if let uiImage = renderer.uiImage {
+            shareImage = Image(uiImage: uiImage)
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        SpiritDetailView(spirit: PreviewData.sample)
+    }
+    .modelContainer(PreviewData.container)
+}
