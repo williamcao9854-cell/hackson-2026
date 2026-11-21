@@ -20,12 +20,15 @@ final class EncounterModel {
     var photo: UIImage?
     var cutout: ImageProcessing.Cutout?
     var object: ObjectKind = .unknown
+    /// 识别给出的候选，用户可以一键改正
+    var candidates: [ObjectKind] = []
     var palette: [RGB] = []
 
     // 讲讲它
     var objectName = ""
     var companionship: Companionship = .years
     var memory = ""
+    var wearMarks: Set<WearMark> = []
 
     // 唤醒结果
     var profile: SpiritProfile?
@@ -37,6 +40,37 @@ final class EncounterModel {
     private(set) var savedSpirit: Spirit?
 
     var sticker: UIImage? { cutout?.sticker }
+
+    /// 物灵已经唤醒，但还没有存进图鉴（这时关闭需要确认）
+    var hasUnsavedSpirit: Bool { profile != nil && savedSpirit == nil }
+
+    /// 用户改了名字时（比如"外婆的闹钟"），尽量换成对应的物品类别，让生成结果跟着变
+    private var resolvedObject: ObjectKind {
+        let name = objectName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if name.isEmpty || name == object.chinese { return object }
+        return ObjectCatalog.kind(matchingChinese: name) ?? object
+    }
+
+    func choose(_ kind: ObjectKind) {
+        object = kind
+        objectName = kind.chinese
+    }
+
+    func toggle(_ mark: WearMark) {
+        if wearMarks.contains(mark) { wearMarks.remove(mark) } else { wearMarks.insert(mark) }
+    }
+
+    /// 拍得不满意：回到取景
+    func retake() {
+        photo = nil
+        cutout = nil
+        object = .unknown
+        candidates = []
+        palette = []
+        objectName = ""
+        wearMarks = []
+        withAnimation(.wlCalm) { stage = .capture }
+    }
 
     var color: TraditionalColor {
         ColorNaming.traditionalColor(for: palette.first ?? RGB(r: 0.5, g: 0.5, b: 0.5))
@@ -53,16 +87,17 @@ final class EncounterModel {
             let normalized = ImageProcessing.normalized(image)
             let cutout = ImageProcessing.liftSubject(from: normalized)
             let source = cutout.foundSubject ? ImageProcessing.onWhite(cutout.subject) : normalized.cgImage
-            let kind = source.map(ObjectRecognizer.recognize) ?? .unknown
+            let recognition = source.map(ObjectRecognizer.recognize)
             let palette = ImageProcessing.dominantColors(of: cutout.foundSubject ? cutout.subject : normalized)
-            return (normalized, cutout, kind, palette)
+            return (normalized, cutout, recognition, palette)
         }.value
 
         photo = processed.0
         cutout = processed.1
-        object = processed.2
+        object = processed.2?.best ?? .unknown
+        candidates = processed.2?.candidates ?? []
         palette = processed.3
-        objectName = processed.2.chinese
+        objectName = object.chinese
         isProcessingPhoto = false
 
         withAnimation(.wlCalm) { stage = .story }
@@ -72,13 +107,15 @@ final class EncounterModel {
 
     private var seed: SpiritSeed {
         let name = objectName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let kind = resolvedObject
         return SpiritSeed(
-            object: object,
-            displayName: name.isEmpty ? object.chinese : name,
+            object: kind,
+            displayName: name.isEmpty ? kind.chinese : name,
             color: color,
             palette: palette,
             companionship: companionship,
-            memory: memory
+            memory: memory,
+            wearMarks: WearMark.allCases.filter { wearMarks.contains($0) }
         )
     }
 
@@ -127,12 +164,12 @@ final class EncounterModel {
         }
         guard let profile else { return nil }
 
-        let count = (try? context.fetchCount(FetchDescriptor<Spirit>())) ?? 0
+        let seed = self.seed
         let spirit = Spirit(
-            serial: count + 1,
+            serial: Spirit.nextSerial(in: context),
             profile: profile,
             objectName: seed.displayName,
-            object: object,
+            object: seed.object,
             companionship: companionship,
             memory: memory.trimmingCharacters(in: .whitespacesAndNewlines),
             colorName: color.name,

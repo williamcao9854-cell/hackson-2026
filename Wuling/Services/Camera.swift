@@ -60,7 +60,9 @@ final class CameraController: NSObject, AVCapturePhotoCaptureDelegate {
     }
 
     func capturePhoto() async -> UIImage? {
-        await withCheckedContinuation { continuation in
+        // 上一张还没拍完时忽略，避免覆盖等待中的回调
+        guard continuation == nil else { return nil }
+        return await withCheckedContinuation { continuation in
             self.continuation = continuation
             queue.async { [self] in
                 let settings = AVCapturePhotoSettings()

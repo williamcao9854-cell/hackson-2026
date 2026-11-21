@@ -21,7 +21,7 @@ enum OnDeviceSpiritWriter {
     #if canImport(FoundationModels)
     @Generable
     struct GeneratedProfile {
-        @Guide(description: "物灵的名字。正好三个汉字：第一个字是颜色字，第二个字和物品有关，第三个字从「丸、子、君、郎、姬」中选。例如：青履丸、墨芯君、栗偶子")
+        @Guide(description: "物灵的名字。正好三个汉字：第一个字是颜色字，第二个字和物品有关，第三个字从「君、子、生、郎、儿」中选。例如：青履君、墨芯生、栗偶儿")
         var name: String
 
         @Guide(description: "对这个物灵性格的温柔描述，用第三人称“它”，一到两句话，总共不超过 40 个字。可以化用主人写下的记忆，但不要照抄。")
@@ -32,7 +32,7 @@ enum OnDeviceSpiritWriter {
         guard case .available = SystemLanguageModel.default.availability else { return nil }
 
         let session = LanguageModelSession(instructions: """
-        你是一位温柔的日本民间故事讲述者。日本传说中，器物被人珍惜久了，就会生出灵魂，叫作「付丧神」。
+        你是一位温柔的东方民间故事讲述者。葛洪在《抱朴子》里写道：「万物之老者，其精悉能假托人形。」老人们也常说，东西被人珍惜久了，就有了灵性。
         你的任务是为一件物品的物灵起名字，并描述它的性格。语气安静、温暖、有一点俏皮，不煽情，不说教。
         """)
 

@@ -42,13 +42,27 @@
 
 详细的设计和路演脚本见 [开发计划 · 第七节](docs/PLAN.md#七v11传灵回应评审意见)。
 
-### 接入 AMD 图像生成 API（可选）
-1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
-2. 填入 API 地址、Key、模型名
-3. 重新运行
+### ⚠️ 接入 AMD 图像生成 API（比赛必须）
+比赛要求**必须调用 AMD 图像生成 API，并提交项目海报**。运行 App 本身不依赖它，没有配置时会用离线水彩剪影代替，但**路演和提交前一定要接上**。
 
-`Secrets.plist` 已加入 `.gitignore`，**不会被提交**。没有这个文件时，App 用离线水彩剪影代替生成图，整个流程照样能完整演示。
-接口默认按 OpenAI 兼容的 `/v1/images/generations` 格式调用，格式不同的话只需要改 `Wuling/Services/ImageGeneration.swift`。
+1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
+2. 填入 API 地址、Key、模型名，重新运行 App
+3. **生成海报**（在仓库根目录运行）：
+   ```bash
+   python3 -m pip install pillow
+   python3 tools/generate_poster.py
+   ```
+   会调用 AMD API 画插画，再排版成竖版海报，保存在 `posters/poster.png`
+
+`Secrets.plist` 已加入 `.gitignore`，**不会被提交**。
+接口默认按 OpenAI 兼容的 `/v1/images/generations` 格式调用，格式不同的话只需要改 `Wuling/Services/ImageGeneration.swift` 和 `tools/generate_poster.py`。
+
+### 上台前检查
+- [ ] 两部演示手机都是 **iOS 26 或更高**（设置 → 通用 → 关于本机）
+- [ ] Mac 上装好 **Xcode 26 或更高**，并且运行过一次 `sudo xcode-select -s /Applications/Xcode.app`
+- [ ] 接好 AMD API，真机上试过几次，记下每次生成大概要多久
+- [ ] 海报已生成
+- [ ] 深色模式、浅色模式都检查过一遍
 
 ### 项目打不开？
 - **备用方案 1**：`brew install xcodegen && xcodegen generate`，会根据 `project.yml` 重新生成项目
@@ -75,6 +89,7 @@ Wuling/
 └── Resources/              App 图标、MobileNetV2 模型、API 配置模板
 Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本
+tools/generate_poster.py    调用 AMD API 生成项目海报
 ```
 
 ## 隐私

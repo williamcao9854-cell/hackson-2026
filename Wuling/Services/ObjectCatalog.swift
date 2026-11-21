@@ -216,6 +216,47 @@ enum ObjectCatalog {
             ("mountain bike", "自行车", "bicycle", .sport),
             ("tricycle", "三轮车", "tricycle", .sport),
             ("dumbbell", "哑铃", "dumbbell", .sport),
+            // ImageNet 里没有、但日常最常见的物品。
+            // key 尽量写成 Vision 内置分类器可能给出的标签；以 "~" 开头的只用于中文反查。
+            ("headphones", "耳机", "headphones", .electronic),
+            ("earphones", "耳机", "earphones", .electronic),
+            ("~earbuds", "无线耳机", "wireless earbuds in a charging case", .electronic),
+            ("thermos", "保温杯", "insulated thermos bottle", .vessel),
+            ("~power bank", "充电宝", "portable power bank", .electronic),
+            ("~charger", "充电器", "phone charger", .electronic),
+            ("key", "钥匙", "old key", .tool),
+            ("keys", "钥匙", "bunch of keys", .tool),
+            ("~keychain", "钥匙扣", "keychain charm", .accessory),
+            ("figurine", "手办", "small collectible figurine", .toy),
+            ("~blind box", "盲盒", "small blind box toy figure", .toy),
+            ("stuffed animal", "毛绒玩具", "stuffed animal plush", .toy),
+            ("plush", "毛绒玩具", "plush toy", .toy),
+            ("~doll", "娃娃", "doll", .toy),
+            ("bracelet", "手链", "bracelet", .accessory),
+            ("ring", "戒指", "ring", .accessory),
+            ("~hair tie", "发圈", "hair tie", .accessory),
+            ("~tote bag", "帆布包", "canvas tote bag", .bag),
+            ("~school bag", "书包", "school bag", .bag),
+            ("sneaker", "球鞋", "sneaker", .footwear),
+            ("~slippers", "拖鞋", "slippers", .footwear),
+            ("~paper notebook", "笔记本", "paper notebook", .paper),
+            ("~journal", "手账", "journal notebook", .paper),
+            ("~postcard", "明信片", "postcard", .paper),
+            ("~photo", "照片", "old photograph", .paper),
+            ("picture frame", "相框", "picture frame", .furniture),
+            ("~calendar", "台历", "desk calendar", .paper),
+            ("~cushion", "靠垫", "cushion", .furniture),
+            ("~blanket", "毯子", "blanket", .clothing),
+            ("~hoodie", "卫衣", "hoodie", .clothing),
+            ("~jacket", "外套", "jacket", .clothing),
+            ("~ukulele", "尤克里里", "ukulele", .instrument),
+            ("~skateboard", "滑板", "skateboard", .sport),
+            ("~badminton racket", "羽毛球拍", "badminton racket", .sport),
+            ("~game console", "游戏机", "handheld game console", .electronic),
+            ("~tablet", "平板电脑", "tablet computer", .electronic),
+            ("~smartwatch", "智能手表", "smartwatch", .electronic),
+            ("~glasses", "眼镜", "eyeglasses", .accessory),
+            ("~alarm clock", "闹钟", "alarm clock", .electronic),
         ]
         var map: [String: ObjectKind] = [:]
         for (key, chinese, english, family) in entries {
@@ -223,6 +264,34 @@ enum ObjectCatalog {
         }
         return map
     }()
+
+    /// 所有物品（去重），用于中文反查
+    private static let allKinds: [ObjectKind] = {
+        var seen = Set<String>()
+        return table.values
+            .filter { seen.insert($0.chinese + "|" + $0.english).inserted }
+            .sorted { $0.chinese.count > $1.chinese.count }
+    }()
+
+    /// 用户手动输入的名字里包含哪个物品？取最长的匹配。
+    /// 例如"外婆的闹钟" → 闹钟；"第一双跑鞋" → 跑鞋；"旧吉他" → 吉他
+    static func kind(matchingChinese text: String) -> ObjectKind? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return allKinds.first { trimmed.contains($0.chinese) }
+    }
+
+    /// 给用户选的候选（最多 `limit` 个，中文名不重复）
+    static func rankedKinds(from labels: [(identifier: String, confidence: Float)], limit: Int = 3) -> [ObjectKind] {
+        var result: [ObjectKind] = []
+        for candidate in labels where candidate.confidence >= 0.02 {
+            guard let kind = kind(forLabel: candidate.identifier),
+                  !result.contains(where: { $0.chinese == kind.chinese }) else { continue }
+            result.append(kind)
+            if result.count == limit { break }
+        }
+        return result
+    }
 
     /// 用一个 ImageNet 标签查找物品。标签形如 "teddy, teddy bear"。
     static func kind(forLabel label: String) -> ObjectKind? {

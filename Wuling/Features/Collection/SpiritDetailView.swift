@@ -96,6 +96,8 @@ struct SpiritDetailView: View {
                 } onFinish: {
                     showingFarewell = false
                     renderShareImage()
+                } onCancel: {
+                    showingFarewell = false
                 }
             }
             .foregroundStyle(.ink)
@@ -103,7 +105,11 @@ struct SpiritDetailView: View {
         .sheet(isPresented: $showingRelay, onDismiss: renderShareImage) {
             RelaySendView(spirit: spirit)
         }
-        .onAppear { renderShareImage() }
+        .task {
+            // 等进入详情的转场动画结束，再渲染分享图，避免卡顿
+            try? await Task.sleep(for: .milliseconds(700))
+            renderShareImage()
+        }
     }
 
     // MARK: - 插画（灵貌 / 原貌）
@@ -129,6 +135,7 @@ struct SpiritDetailView: View {
         }
         .overlay(alignment: .topTrailing) {
             VerticalText(text: spirit.name, font: .wlSpiritName(40))
+                .foregroundStyle(.inkOnArt)
                 .padding(.top, 22)
                 .padding(.trailing, 22)
                 .opacity(showOriginal ? 0 : 1)
@@ -143,7 +150,7 @@ struct SpiritDetailView: View {
                         .padding(.horizontal, 4)
                 }
                 .buttonStyle(.glass)
-                .tint(.ink)
+                .foregroundStyle(.ink)
                 .padding(14)
                 .accessibilityHint(showOriginal ? "查看物灵插画" : "查看物品原本的样子")
             }
@@ -155,14 +162,12 @@ struct SpiritDetailView: View {
 
     private var info: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Tsukumogami · \(WLFormat.serial(spirit.serial))").eyebrow()
+            Text("Wuling · \(WLFormat.serial(spirit.serial))").eyebrow()
 
             Text(spirit.epithet)
                 .font(.system(size: 26, weight: .semibold))
 
-            Text([spirit.colorName, "相伴\(spirit.companionship.title)", "遇见于 \(WLFormat.date(spirit.createdAt))"]
-                .filter { !$0.isEmpty }
-                .joined(separator: "　·　"))
+            Text(metaItems.filter { !$0.isEmpty }.joined(separator: "　·　"))
                 .font(.system(size: 13))
                 .monospacedDigit()
                 .foregroundStyle(.inkSecondary)
@@ -191,6 +196,14 @@ struct SpiritDetailView: View {
                     .padding(.top, 6)
             }
         }
+    }
+
+    /// 自己唤醒的：颜色 · 相伴多久 · 遇见于；从别人那里接过来的：颜色 · 接过于 · 第几代
+    private var metaItems: [String] {
+        if let received = spirit.receivedAt {
+            return [spirit.colorName, "接过于 \(WLFormat.date(received))", "第 \(max(1, spirit.chapters.count)) 代主人"]
+        }
+        return [spirit.colorName, "相伴\(spirit.companionship.title)", "遇见于 \(WLFormat.date(spirit.createdAt))"]
     }
 
     // MARK: - 送别记录 / 同住
@@ -242,7 +255,7 @@ struct SpiritDetailView: View {
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.glass)
-                    .tint(.ink)
+                    .foregroundStyle(.ink)
 
                     Button {
                         showingFarewell = true

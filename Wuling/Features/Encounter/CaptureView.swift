@@ -10,6 +10,7 @@ struct CaptureView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var shutterCount = 0
     @State private var scanPhase: CGFloat = -1
+    @State private var isCapturing = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -149,22 +150,25 @@ struct CaptureView: View {
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
-                .tint(.ink)
+                .foregroundStyle(.ink)
                 .accessibilityLabel("从相册选择")
 
                 Button {
+                    guard !isCapturing else { return }
+                    isCapturing = true
+                    shutterCount += 1
                     Task {
-                        shutterCount += 1
                         if let image = await camera.capturePhoto() {
                             camera.stop()
                             await model.usePhoto(image)
                         }
+                        isCapturing = false
                     }
                 } label: {
                     ShutterLabel()
                 }
                 .buttonStyle(ShutterButtonStyle())
-                .disabled(status != .running || model.isProcessingPhoto)
+                .disabled(status != .running || model.isProcessingPhoto || isCapturing)
                 .opacity(status == .running ? 1 : 0.35)
                 .accessibilityLabel("拍照")
 

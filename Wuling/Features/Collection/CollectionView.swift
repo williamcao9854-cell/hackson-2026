@@ -21,6 +21,7 @@ struct CollectionView: View {
         case all = "全部"
         case living = "同住"
         case released = "已送别"
+        case relayed = "已传出"
         var id: String { rawValue }
     }
 
@@ -28,7 +29,8 @@ struct CollectionView: View {
         switch filter {
         case .all: spirits
         case .living: spirits.filter { !$0.isReleased }
-        case .released: spirits.filter(\.isReleased)
+        case .released: spirits.filter { $0.isReleased && !$0.isRelayed }
+        case .relayed: spirits.filter(\.isRelayed)
         }
     }
 
@@ -110,8 +112,16 @@ struct CollectionView: View {
                 guard url.pathExtension.lowercased() == SpiritCapsule.fileExtension else { return }
                 do {
                     let capsule = try SpiritCapsule.read(from: url)
-                    showingEncounter = false
-                    incoming = IncomingSpirit(capsule: capsule)
+                    if showingEncounter {
+                        // 先关掉正在进行的「遇见」，等它退场后再弹出，否则 SwiftUI 会丢掉这次弹窗
+                        showingEncounter = false
+                        Task {
+                            try? await Task.sleep(for: .milliseconds(700))
+                            incoming = IncomingSpirit(capsule: capsule)
+                        }
+                    } else {
+                        incoming = IncomingSpirit(capsule: capsule)
+                    }
                 } catch {
                     incomingError = error.localizedDescription
                 }
@@ -133,7 +143,11 @@ struct CollectionView: View {
                 .foregroundStyle(.inkSecondary)
             if !spirits.isEmpty {
                 let living = spirits.filter { !$0.isReleased }.count
-                Text("同住 \(living)　·　已送别 \(spirits.count - living)")
+                let relayed = spirits.filter(\.isRelayed).count
+                let released = spirits.count - living - relayed
+                Text(relayed > 0
+                     ? "同住 \(living)　·　已送别 \(released)　·　已传出 \(relayed)"
+                     : "同住 \(living)　·　已送别 \(released)")
                     .font(.wlCaption)
                     .monospacedDigit()
                     .foregroundStyle(.inkSecondary)
@@ -170,7 +184,7 @@ private struct EmptyCollectionView: View {
             }
 
             VStack(spacing: 10) {
-                Text("日本的传说里，器物被人珍惜久了，\n就会生出灵魂，叫作「付丧神」。")
+                Text("《抱朴子》里说：「万物之老者，\n其精悉能假托人形。」\n东西被人珍惜久了，就有了灵性。")
                 Text("拍下一件你舍不得扔的旧物，\n唤醒它的物灵，然后安心放手。")
             }
             .font(.system(size: 15))

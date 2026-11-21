@@ -6,6 +6,7 @@ struct EncounterView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var model = EncounterModel()
+    @State private var confirmingClose = false
 
     var body: some View {
         ZStack {
@@ -48,7 +49,11 @@ struct EncounterView: View {
         .overlay(alignment: .topLeading) {
             if model.stage != .awakening {
                 Button {
-                    dismiss()
+                    if model.hasUnsavedSpirit {
+                        confirmingClose = true
+                    } else {
+                        dismiss()
+                    }
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 15, weight: .semibold))
@@ -56,14 +61,24 @@ struct EncounterView: View {
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
-                .tint(.ink)
+                .foregroundStyle(.ink)
                 .padding(.leading, Metrics.gutter)
                 .padding(.top, 8)
                 .accessibilityLabel("关闭")
             }
         }
         .foregroundStyle(.ink)
-        .interactiveDismissDisabled(model.stage == .awakening)
+        .interactiveDismissDisabled(model.stage == .awakening || model.hasUnsavedSpirit)
+        .confirmationDialog("要放下这个物灵吗？", isPresented: $confirmingClose, titleVisibility: .visible) {
+            Button("留它同住") {
+                model.save(in: modelContext)
+                dismiss()
+            }
+            Button("不要了", role: .destructive) { dismiss() }
+            Button("再想想", role: .cancel) {}
+        } message: {
+            Text("它刚刚醒来。离开之前，可以先让它住进图鉴。")
+        }
     }
 }
 

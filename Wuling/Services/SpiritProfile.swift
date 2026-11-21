@@ -1,5 +1,39 @@
 import Foundation
 
+/// 岁月留在物品身上的痕迹。由用户勾选，会写进生成提示词，让物灵更像原物。
+/// 这几项只是"类型"，不涉及隐私，所以可以发给图像 API。
+enum WearMark: String, CaseIterable, Codable, Identifiable, Sendable {
+    case faded, chipped, scratched, cracked, stickers, mended, polished, stained
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .faded: "褪色"
+        case .chipped: "掉漆"
+        case .scratched: "划痕"
+        case .cracked: "裂纹"
+        case .stickers: "贴满贴纸"
+        case .mended: "缝补过"
+        case .polished: "磨得发亮"
+        case .stained: "旧污渍"
+        }
+    }
+
+    var promptPhrase: String {
+        switch self {
+        case .faded: "faded, sun-bleached colors"
+        case .chipped: "chipped paint at the edges"
+        case .scratched: "fine scratches all over"
+        case .cracked: "a small, carefully kept crack"
+        case .stickers: "covered with little stickers"
+        case .mended: "lovingly mended and patched"
+        case .polished: "worn smooth and shiny from years of touch"
+        case .stained: "a few old, faint stains"
+        }
+    }
+}
+
 /// 唤醒物灵需要的全部原料。
 struct SpiritSeed: Sendable {
     var object: ObjectKind
@@ -10,6 +44,8 @@ struct SpiritSeed: Sendable {
     var companionship: Companionship
     /// 用户写下的记忆。只在设备端使用，不会发给图像 API。
     var memory: String
+    /// 用户勾选的岁月痕迹
+    var wearMarks: [WearMark] = []
 }
 
 /// 物灵的"身份证"。
@@ -44,7 +80,8 @@ enum StableHash {
 
 /// 不依赖任何模型的起名器。Foundation Models 不可用时使用。
 enum TemplateSpiritWriter {
-    private static let endings = ["丸", "子", "君", "郎", "姬"]
+    /// 名字结尾的字：亲昵、带一点古意
+    private static let endings = ["君", "子", "生", "郎", "儿"]
 
     private static func companionshipLine(_ c: Companionship) -> String {
         switch c {
@@ -56,6 +93,19 @@ enum TemplateSpiritWriter {
         }
     }
 
+    /// 从用户的记忆里摘出第一句，让卡片上看得到这段记忆。
+    /// 例如："高三那年，它陪我跑完了每一个清晨。" → 它一直记得：「高三那年，它陪我跑完了每一个清晨」。
+    static func memoryEcho(_ memory: String) -> String? {
+        let trimmed = memory.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let sentenceEnds: Set<Character> = ["。", "！", "？", "!", "?", "\n", "…"]
+        var sentence = String(trimmed.prefix { !sentenceEnds.contains($0) })
+            .trimmingCharacters(in: .whitespaces)
+        if sentence.isEmpty { return nil }
+        if sentence.count > 30 { sentence = String(sentence.prefix(29)) + "…" }
+        return "它一直记得：「\(sentence)」。"
+    }
+
     static func write(for seed: SpiritSeed) -> SpiritProfile {
         let key = seed.object.english + "|" + seed.color.character + "|" + seed.companionship.rawValue
         let middle = StableHash.pick(seed.object.family.nameCharacters, seed: key, salt: "middle")
@@ -65,7 +115,7 @@ enum TemplateSpiritWriter {
         return SpiritProfile(
             name: seed.color.character + middle + ending,
             epithet: "\(seed.displayName)之灵",
-            personality: familyLine + companionshipLine(seed.companionship),
+            personality: familyLine + (memoryEcho(seed.memory) ?? companionshipLine(seed.companionship)),
             farewellSuggestion: "谢谢你，陪我\(seed.companionship.phrase)。"
         )
     }

@@ -3,12 +3,20 @@ import Vision
 
 /// 设备端物品识别。
 ///
-/// 优先使用打包进 App 的 **Core ML 模型 MobileNetV2**（Apple 官方提供，ImageNet 1000 类），
-/// 模型不可用时退回 Vision 内置的分类器。识别全程在本机完成。
+/// 两个模型一起看：
+/// - 打包进 App 的 **Core ML 模型 MobileNetV2**（Apple 官方提供，ImageNet 1000 类）
+/// - Vision 内置分类器（类别更多，能补上耳机、钥匙、毛绒玩具这类 ImageNet 没有的东西）
+/// 结果给出一个最佳猜测和几个候选，用户可以一键改正。识别全程在本机完成。
 enum ObjectRecognizer {
     struct Candidate {
         var identifier: String
         var confidence: Float
+    }
+
+    struct Recognition {
+        var best: ObjectKind
+        /// 给用户选的候选，最多 4 个
+        var candidates: [ObjectKind]
     }
 
     /// 编译好的 Core ML 模型，首次使用时加载一次。
@@ -22,32 +30,34 @@ enum ObjectRecognizer {
         return try? VNCoreMLModel(for: model)
     }()
 
-    /// 返回按置信度从高到低排列的候选标签
+    /// Core ML 的结果在前（更细的物品类别），Vision 的结果在后（补充 ImageNet 没有的类别）
     static func classify(_ cgImage: CGImage) -> [Candidate] {
         let handler = VNImageRequestHandler(cgImage: cgImage, orientation: .up)
+        var candidates: [Candidate] = []
 
         if let model = coreMLModel {
             let request = VNCoreMLRequest(model: model)
-            request.imageCropAndScaleOption = .centerCrop
+            // 图片已经补成正方形，这里缩放进模型，不裁剪
+            request.imageCropAndScaleOption = .scaleFit
             if (try? handler.perform([request])) != nil,
-               let results = request.results as? [VNClassificationObservation], !results.isEmpty {
-                return results.prefix(10).map { Candidate(identifier: $0.identifier, confidence: $0.confidence) }
+               let results = request.results as? [VNClassificationObservation] {
+                candidates += results.prefix(10).map { Candidate(identifier: $0.identifier, confidence: $0.confidence) }
             }
         }
 
-        let fallback = VNClassifyImageRequest()
-        if (try? handler.perform([fallback])) != nil, let results = fallback.results {
-            return results
-                .filter { $0.confidence > 0.05 }
+        let visionRequest = VNClassifyImageRequest()
+        if (try? handler.perform([visionRequest])) != nil, let results = visionRequest.results {
+            candidates += results
+                .filter { $0.confidence > 0.1 }
                 .prefix(10)
                 .map { Candidate(identifier: $0.identifier.replacingOccurrences(of: "_", with: " "), confidence: $0.confidence) }
         }
-        return []
+        return candidates
     }
 
-    /// 识别并映射成中文物品
-    static func recognize(_ cgImage: CGImage) -> ObjectKind {
-        let candidates = classify(cgImage)
-        return ObjectCatalog.bestMatch(from: candidates.map { ($0.identifier, $0.confidence) })
+    static func recognize(_ cgImage: CGImage) -> Recognition {
+        let labels: [(identifier: String, confidence: Float)] = classify(cgImage).map { ($0.identifier, $0.confidence) }
+        let candidates = ObjectCatalog.rankedKinds(from: labels, limit: 4)
+        return Recognition(best: candidates.first ?? ObjectCatalog.bestMatch(from: labels), candidates: candidates)
     }
 }

@@ -1,5 +1,6 @@
 import CoreTransferable
 import SwiftData
+import UIKit
 import UniformTypeIdentifiers
 
 extension UTType {
@@ -11,14 +12,32 @@ extension UTType {
 extension SpiritCapsule: Transferable {
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(contentType: .wulingSpirit) { capsule in
-            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let url = folder.appendingPathComponent(capsule.suggestedFileName)
-            try capsule.encoded().write(to: url, options: .atomic)
-            return SentTransferredFile(url)
+            SentTransferredFile(try capsule.writeTemporaryFile())
         } importing: { received in
             try SpiritCapsule.decode(Data(contentsOf: received.file))
         }
+    }
+
+    /// 写成一个临时的 `.wuling` 文件，用于分享
+    func writeTemporaryFile() throws -> URL {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let url = folder.appendingPathComponent(suggestedFileName)
+        try encoded().write(to: url, options: .atomic)
+        return url
+    }
+
+    /// 传出前压缩图片：插画转 JPEG、长边 1024；贴纸保留透明、长边 640。
+    /// 一个物灵文件从好几 MB 降到几百 KB，隔空投送几乎是瞬间完成。
+    func compressedForTransfer() -> SpiritCapsule {
+        var copy = self
+        if let data = spiritImage, let image = UIImage(data: data) {
+            copy.spiritImage = ImageCompression.resized(image, maxDimension: 1024).jpegData(compressionQuality: 0.82) ?? data
+        }
+        if let data = stickerImage, let image = UIImage(data: data) {
+            copy.stickerImage = ImageCompression.resized(image, maxDimension: 640).pngData() ?? data
+        }
+        return copy
     }
 
     /// 读取从隔空投送、文件 App 打开的 `.wuling` 文件
@@ -58,10 +77,23 @@ enum RelayInbox {
             return returning
         }
 
-        let count = (try? context.fetchCount(FetchDescriptor<Spirit>())) ?? 0
-        let spirit = Spirit(capsule: capsule, serial: count + 1, chapters: chapters, receivedAt: now)
+        let spirit = Spirit(capsule: capsule, serial: Spirit.nextSerial(in: context), chapters: chapters, receivedAt: now)
         context.insert(spirit)
         try? context.save()
         return spirit
+    }
+}
+
+enum ImageCompression {
+    static func resized(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        let scale = min(1, maxDimension / max(size.width, size.height))
+        guard scale < 1 else { return image }
+        let target = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        return UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
     }
 }

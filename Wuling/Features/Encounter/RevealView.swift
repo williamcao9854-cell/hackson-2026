@@ -56,13 +56,13 @@ struct RevealView: View {
                 .saturation(artFocused ? 1 : 0.3)
                 .overlay(alignment: .topTrailing) {
                     VerticalText(text: profile?.name ?? "", font: .wlSpiritName(38), revealed: revealedCharacters)
-                        .foregroundStyle(.ink)
+                        .foregroundStyle(.inkOnArt)
                         .padding(.top, 20)
                         .padding(.trailing, 22)
                 }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text("Tsukumogami · \(model.companionship.spiritAge)").eyebrow()
+                Text("Wuling · \(model.companionship.spiritAge)").eyebrow()
                 Text(profile?.epithet ?? "")
                     .font(.system(size: 22, weight: .semibold))
                 Text(profile?.personality ?? "")
@@ -94,7 +94,7 @@ struct RevealView: View {
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.glass)
-                    .tint(.ink)
+                    .foregroundStyle(.ink)
 
                     Button(action: onFarewell) {
                         Text("送别它")

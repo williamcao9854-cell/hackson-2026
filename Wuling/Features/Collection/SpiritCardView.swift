@@ -14,7 +14,7 @@ struct SpiritCardView: View {
                 .clipped()
                 .overlay(alignment: .topTrailing) {
                     VerticalText(text: spirit.name, font: .wlSpiritName(19), spacing: 0)
-                        .foregroundStyle(Color.ink)
+                        .foregroundStyle(Color.inkOnArt)
                         .padding(.top, 12)
                         .padding(.trailing, 12)
                 }

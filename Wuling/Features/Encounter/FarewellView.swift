@@ -11,6 +11,8 @@ struct FarewellView: View {
     var suggestion: String
     var onReleased: (String) -> Void
     var onFinish: () -> Void
+    /// 从详情页打开时提供，左上角显示关闭按钮（送别开始后隐藏）
+    var onCancel: (() -> Void)? = nil
 
     private enum Phase { case writing, dissolving, sealed }
 
@@ -43,6 +45,21 @@ struct FarewellView: View {
         }
         .animation(.wlCalm, value: phase)
         .sensoryFeedback(.impact(weight: .heavy), trigger: stampLanded)
+        .overlay(alignment: .topLeading) {
+            if let onCancel, phase == .writing {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .foregroundStyle(.ink)
+                .padding(.leading, Metrics.gutter)
+                .padding(.top, 8)
+                .accessibilityLabel("先不送别")
+            }
+        }
     }
 
     // MARK: - 舞台：原物 → 光点 → 物灵 + 朱印

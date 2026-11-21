@@ -49,6 +49,8 @@ extension ShapeStyle where Self == Color {
     static var inkSecondary: Color { Color.wlInkSecondary }
     static var vermilion: Color { Color.wlVermilion }
     static var hairline: Color { Color.wlHairline }
+    /// 压在插画上的文字：插画底色永远是浅色和纸，所以文字永远用深墨色，深色模式也不变
+    static var inkOnArt: Color { Color(uiColor: UIColor(hex: 0x1C1A17)) }
 }
 
 // MARK: - 字体

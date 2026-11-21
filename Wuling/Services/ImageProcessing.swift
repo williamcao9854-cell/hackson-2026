@@ -104,14 +104,18 @@ enum ImageProcessing {
         }
     }
 
-    /// 主体铺在白底上，方便分类模型识别（透明区域会被当成黑色）。
+    /// 主体居中铺在正方形白底上，方便分类模型识别。
+    /// - 透明区域会被模型当成黑色，所以要铺白底
+    /// - 吉他、雨伞、钢笔这类长条物体，如果不补成正方形，送进模型时头尾会被裁掉
     static func onWhite(_ image: UIImage) -> CGImage? {
+        let side = max(image.size.width, image.size.height) * 1.12
+        let canvas = CGSize(width: side, height: side)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
-        let rendered = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+        let rendered = UIGraphicsImageRenderer(size: canvas, format: format).image { _ in
             UIColor.white.setFill()
-            UIRectFill(CGRect(origin: .zero, size: image.size))
-            image.draw(at: .zero)
+            UIRectFill(CGRect(origin: .zero, size: canvas))
+            image.draw(at: CGPoint(x: (side - image.size.width) / 2, y: (side - image.size.height) / 2))
         }
         return rendered.cgImage
     }

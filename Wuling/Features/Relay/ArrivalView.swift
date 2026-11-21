@@ -84,13 +84,14 @@ struct ArrivalView: View {
                 .clipped()
                 .overlay(alignment: .topTrailing) {
                     VerticalText(text: capsule.name, font: .wlSpiritName(36))
+                        .foregroundStyle(.inkOnArt)
                         .padding(.top, 20)
                         .padding(.trailing, 22)
                 }
 
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Tsukumogami · 第 \(generation) 代主人").eyebrow()
+                    Text("Wuling · 第 \(generation) 代主人").eyebrow()
                     Text(capsule.epithet)
                         .font(.system(size: 20, weight: .semibold))
                     Text(capsule.personality)

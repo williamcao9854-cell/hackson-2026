@@ -28,9 +28,32 @@ struct StoryView: View {
                         .multilineTextAlignment(.center)
                         .focused($focusedField, equals: .name)
                         .submitLabel(.done)
-                    Text("可以改成你对它的称呼，比如「第一双跑鞋」")
+                    Text("可以改成你对它的称呼，比如「外婆的闹钟」")
                         .font(.system(size: 13))
                         .foregroundStyle(.inkSecondary)
+
+                    let others = model.candidates.filter { $0.chinese != model.objectName }
+                    if !others.isEmpty {
+                        HStack(spacing: 8) {
+                            Text("是不是")
+                                .font(.system(size: 13))
+                                .foregroundStyle(.inkSecondary)
+                            ForEach(Array(others.prefix(3)), id: \.self) { kind in
+                                Button {
+                                    model.choose(kind)
+                                } label: {
+                                    Text(kind.chinese)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .overlay { Capsule().strokeBorder(Color.ink.opacity(0.18), lineWidth: 1) }
+                                        .contentShape(Capsule())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.top, 8)
+                    }
                 }
                 .padding(.top, 32)
                 .padding(.horizontal, Metrics.gutter)
@@ -45,6 +68,17 @@ struct StoryView: View {
                     }
                 }
                 .padding(.top, 36)
+
+                section(title: "岁月留下的痕迹", note: "可多选，会画进物灵里") {
+                    FlowLayout(spacing: 10) {
+                        ForEach(WearMark.allCases) { mark in
+                            ChoiceChip(title: mark.title, isSelected: model.wearMarks.contains(mark)) {
+                                model.toggle(mark)
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 28)
 
                 section(title: "关于它的一段记忆", note: "选填") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -68,6 +102,20 @@ struct StoryView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .overlay(alignment: .topTrailing) {
+            Button {
+                model.retake()
+            } label: {
+                Label("重拍", systemImage: "camera.rotate")
+                    .font(.system(size: 14, weight: .semibold))
+                    .padding(.horizontal, 4)
+                    .frame(height: 32)
+            }
+            .buttonStyle(.glass)
+            .foregroundStyle(.ink)
+            .padding(.trailing, Metrics.gutter)
+            .padding(.top, 14)
+        }
         .safeAreaInset(edge: .bottom) {
             Button {
                 focusedField = nil
@@ -84,6 +132,8 @@ struct StoryView: View {
             .padding(.bottom, 8)
         }
         .sensoryFeedback(.selection, trigger: model.companionship)
+        .sensoryFeedback(.selection, trigger: model.wearMarks)
+        .sensoryFeedback(.selection, trigger: model.object)
         .sensoryFeedback(.impact(weight: .light), trigger: lifted)
         .onAppear {
             Task {

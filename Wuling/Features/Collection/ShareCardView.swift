@@ -11,6 +11,7 @@ struct ShareCardView: View {
                     .frame(width: 312, height: 312)
                     .clipped()
                 VerticalText(text: spirit.name, font: .wlSpiritName(34))
+                    .foregroundStyle(.inkOnArt)
                     .padding(.top, 18)
                     .padding(.trailing, 18)
             }

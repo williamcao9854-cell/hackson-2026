@@ -15,6 +15,10 @@ struct RelaySendView: View {
     @State private var stamped = false
     @State private var capsule: SpiritCapsule?
     @State private var outgoingChapters: [RelayChapter] = []
+    @State private var shareURL: URL?
+    @State private var showingShare = false
+    @State private var sent = false
+    @State private var shareError: String?
     @FocusState private var focused: Bool
 
     private var normalizedSeal: String { RelayLogic.normalizedSeal(sealDraft) }
@@ -87,6 +91,25 @@ struct RelaySendView: View {
             }
             .animation(.wlCalm, value: shareMemory)
             .sensoryFeedback(.impact(weight: .heavy), trigger: stamped)
+            .sensoryFeedback(.success, trigger: sent)
+            .sheet(isPresented: $showingShare) {
+                if let shareURL {
+                    ActivitySheet(items: [shareURL]) { completed in
+                        showingShare = false
+                        if completed { markRelayed() }
+                    }
+                    .presentationDetents([.medium, .large])
+                    .ignoresSafeArea()
+                }
+            }
+            .alert("没能打包这个物灵", isPresented: Binding(
+                get: { shareError != nil },
+                set: { if !$0 { shareError = nil } }
+            )) {
+                Button("好") { shareError = nil }
+            } message: {
+                Text(shareError ?? "")
+            }
         }
         .onAppear {
             sealDraft = mySeal
@@ -132,9 +155,16 @@ struct RelaySendView: View {
     @ViewBuilder
     private var actions: some View {
         VStack(spacing: 10) {
-            if let capsule {
-                ShareLink(item: capsule, preview: SharePreview("物灵 · \(spirit.name)", image: Image(systemName: "seal"))) {
-                    Label("隔空投送给 TA", systemImage: "square.and.arrow.up")
+            if sent {
+                Label("已传出。愿它在新主人那里也被好好珍惜。", systemImage: "checkmark.seal")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.vermilion)
+                    .padding(.vertical, 12)
+            } else if let capsule {
+                Button {
+                    share(capsule)
+                } label: {
+                    Label("传给下一位", systemImage: "square.and.arrow.up")
                         .font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 6)
@@ -142,18 +172,35 @@ struct RelaySendView: View {
                 .buttonStyle(.glassProminent)
                 .tint(.vermilion)
 
-                Button {
-                    spirit.relay(chapters: outgoingChapters, noteToNext: noteToNext.trimmingCharacters(in: .whitespacesAndNewlines))
-                    try? modelContext.save()
-                    dismiss()
-                } label: {
-                    Text("已经传出去了")
-                        .font(.system(size: 15, weight: .medium))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                HStack(spacing: 12) {
+                    Button {
+                        withAnimation(.wlCalm) {
+                            stamped = false
+                            self.capsule = nil
+                        }
+                    } label: {
+                        Text("重新填写")
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.glass)
+                    .foregroundStyle(.ink)
+
+                    Button {
+                        markRelayed()
+                    } label: {
+                        Text("已经交给 TA 了")
+                            .font(.system(size: 15, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.glass)
+                    .foregroundStyle(.ink)
                 }
-                .buttonStyle(.glass)
-                .tint(.ink)
+                Text("隔空投送、微信、信息都可以，对方用物灵打开就能收下")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.inkSecondary)
             } else {
                 Button {
                     stamp()
@@ -183,8 +230,29 @@ struct RelaySendView: View {
             memory: shareMemory ? memoryDraft : "",
             noteToNext: noteToNext
         )
-        capsule = spirit.makeCapsule(chapters: outgoingChapters)
+        capsule = spirit.makeCapsule(chapters: outgoingChapters).compressedForTransfer()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.6)) { stamped = true }
+    }
+
+    private func share(_ capsule: SpiritCapsule) {
+        do {
+            shareURL = try capsule.writeTemporaryFile()
+            showingShare = true
+        } catch {
+            shareError = error.localizedDescription
+        }
+    }
+
+    /// 发送成功（或用户确认已经交出去）后：标记"已传出"，停一下让人看到结果，再关闭
+    private func markRelayed() {
+        guard !sent else { return }
+        spirit.relay(chapters: outgoingChapters, noteToNext: noteToNext.trimmingCharacters(in: .whitespacesAndNewlines))
+        try? modelContext.save()
+        withAnimation(.wlCalm) { sent = true }
+        Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            dismiss()
+        }
     }
 
     private func field<Content: View>(title: String, note: String?, @ViewBuilder content: () -> Content) -> some View {

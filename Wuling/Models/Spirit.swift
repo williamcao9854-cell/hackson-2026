@@ -79,6 +79,14 @@ final class Spirit {
         self.isPlaceholderArt = isPlaceholderArt
     }
 
+    /// 下一个图鉴编号：取现有最大编号 + 1，删除记录后也不会撞号
+    static func nextSerial(in context: ModelContext) -> Int {
+        var descriptor = FetchDescriptor<Spirit>(sortBy: [SortDescriptor(\.serial, order: .reverse)])
+        descriptor.fetchLimit = 1
+        let highest = (try? context.fetch(descriptor).first?.serial) ?? 0
+        return highest + 1
+    }
+
     var isReleased: Bool { releasedAt != nil }
     var isRelayed: Bool { departureRaw == "relayed" }
     /// 我开始拥有它的日子
