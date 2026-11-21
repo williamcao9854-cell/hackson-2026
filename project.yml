@@ -16,6 +16,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hackson2026.wuling
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Wuling-Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: 物灵
         INFOPLIST_KEY_NSCameraUsageDescription: 物灵需要使用相机，拍下你想唤醒的旧物。照片只在手机上处理，不会上传。
         INFOPLIST_KEY_UILaunchScreen_Generation: YES

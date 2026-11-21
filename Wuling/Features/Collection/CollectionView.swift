@@ -7,7 +7,15 @@ struct CollectionView: View {
     @State private var filter: Filter = .all
     @State private var showingEncounter = false
     @State private var showingAbout = false
+    @State private var incoming: IncomingSpirit?
+    @State private var incomingError: String?
     @Namespace private var zoom
+
+    /// 隔空投送或从文件 App 打开的物灵
+    struct IncomingSpirit: Identifiable {
+        let id = UUID()
+        let capsule: SpiritCapsule
+    }
 
     enum Filter: String, CaseIterable, Identifiable {
         case all = "全部"
@@ -86,6 +94,27 @@ struct CollectionView: View {
             }
             .sheet(isPresented: $showingAbout) {
                 AboutView()
+            }
+            .fullScreenCover(item: $incoming) { item in
+                ArrivalView(capsule: item.capsule)
+            }
+            .alert("没能收下这个物灵", isPresented: Binding(
+                get: { incomingError != nil },
+                set: { if !$0 { incomingError = nil } }
+            )) {
+                Button("好") { incomingError = nil }
+            } message: {
+                Text(incomingError ?? "")
+            }
+            .onOpenURL { url in
+                guard url.pathExtension.lowercased() == SpiritCapsule.fileExtension else { return }
+                do {
+                    let capsule = try SpiritCapsule.read(from: url)
+                    showingEncounter = false
+                    incoming = IncomingSpirit(capsule: capsule)
+                } catch {
+                    incomingError = error.localizedDescription
+                }
             }
         }
         .foregroundStyle(.ink)

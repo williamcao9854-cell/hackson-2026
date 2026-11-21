@@ -9,6 +9,7 @@ struct SpiritDetailView: View {
 
     @State private var showOriginal = false
     @State private var showingFarewell = false
+    @State private var showingRelay = false
     @State private var confirmingDelete = false
     @State private var shareImage: Image?
 
@@ -22,6 +23,21 @@ struct SpiritDetailView: View {
                 info
                     .padding(.horizontal, Metrics.gutter)
                     .padding(.top, 28)
+
+                if !spirit.chapters.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("流转").eyebrow()
+                            Spacer()
+                            Text("第 \(spirit.chapters.count) 代主人")
+                                .font(.wlCaption)
+                                .foregroundStyle(.inkSecondary)
+                        }
+                        RelayTimeline(chapters: spirit.chapters)
+                    }
+                    .padding(.horizontal, Metrics.gutter)
+                    .padding(.top, 36)
+                }
 
                 if spirit.isReleased {
                     farewellRecord
@@ -83,6 +99,9 @@ struct SpiritDetailView: View {
                 }
             }
             .foregroundStyle(.ink)
+        }
+        .sheet(isPresented: $showingRelay, onDismiss: renderShareImage) {
+            RelaySendView(spirit: spirit)
         }
         .onAppear { renderShareImage() }
     }
@@ -178,13 +197,18 @@ struct SpiritDetailView: View {
 
     private var farewellRecord: some View {
         HStack(alignment: .center, spacing: 18) {
-            SealStamp(text: "已送别", size: 60)
+            SealStamp(text: spirit.departureSeal, size: 60)
             VStack(alignment: .leading, spacing: 6) {
-                Text("「\(spirit.farewellNote)」")
+                if spirit.isRelayed {
+                    Text("写给下一位主人")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.inkSecondary)
+                }
+                Text("「\(spirit.farewellNote.isEmpty ? "谢谢你。" : spirit.farewellNote)」")
                     .font(.wlQuote)
                     .fixedSize(horizontal: false, vertical: true)
                 if let date = spirit.releasedAt {
-                    Text("送别于 \(WLFormat.date(date))")
+                    Text("\(spirit.isRelayed ? "传出" : "送别")于 \(WLFormat.date(date))")
                         .font(.wlCaption)
                         .monospacedDigit()
                         .foregroundStyle(.inkSecondary)
@@ -202,20 +226,36 @@ struct SpiritDetailView: View {
 
     private var livingFooter: some View {
         VStack(spacing: 12) {
-            Text("它还和你住在一起。等你准备好了，再为它办一场送别。")
+            Text("它还和你住在一起。要把它送给别人，就让物灵和故事一起跟过去；要放手，就为它办一场送别。")
                 .font(.system(size: 14))
                 .foregroundStyle(.inkSecondary)
                 .multilineTextAlignment(.center)
-            Button {
-                showingFarewell = true
-            } label: {
-                Text("送别它")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
+                .lineSpacing(3)
+            GlassEffectContainer(spacing: 12) {
+                HStack(spacing: 12) {
+                    Button {
+                        showingRelay = true
+                    } label: {
+                        Text("传给下一位")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.glass)
+                    .tint(.ink)
+
+                    Button {
+                        showingFarewell = true
+                    } label: {
+                        Text("送别它")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.glassProminent)
+                    .tint(.vermilion)
+                }
             }
-            .buttonStyle(.glassProminent)
-            .tint(.vermilion)
         }
     }
 

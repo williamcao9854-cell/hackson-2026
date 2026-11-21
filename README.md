@@ -1,6 +1,6 @@
 # 物灵 · Wuling
 
-> 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手。
+> 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手；或者，把它和它的故事一起传给下一个人。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
 技术栈：Swift · SwiftUI · Core ML · Vision · Foundation Models · AMD 图像生成 API
@@ -35,6 +35,13 @@
 
 **路演请用真机演示。**
 
+### 测试「传灵」
+需要两部装了物灵的 iPhone（或者一部 iPhone + 一台 Mac 上的模拟器，用"文件"App 传 `.wuling` 文件）：
+1. 手机 A：图鉴里点开一个"同住"的物灵 → **传给下一位** → 写名章和留言 → **盖上名章** → 隔空投送给手机 B
+2. 手机 B：收到后选择用「物灵」打开 → 盖上自己的名章 → 收下
+
+详细的设计和路演脚本见 [开发计划 · 第七节](docs/PLAN.md#七v11传灵回应评审意见)。
+
 ### 接入 AMD 图像生成 API（可选）
 1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
 2. 填入 API 地址、Key、模型名
@@ -61,10 +68,12 @@ Wuling/
 │   └── Components/         竖排文字、朱印、贴纸、长按送别、消散粒子
 ├── Features/
 │   ├── Collection/         图鉴首页、物灵详情、分享卡片、关于
-│   └── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
-├── Models/                 物灵（SwiftData）、陪伴时长
+│   ├── Encounter/          遇见流程：取景 → 讲讲它 → 唤醒 → 初见 → 送别
+│   └── Relay/              传灵：盖章传出、接收物灵
+├── Models/                 物灵（SwiftData）、陪伴时长、传灵章节与胶囊
 ├── Services/               抠图、Core ML 识别、取色、起名、提示词、图像 API、相机
 └── Resources/              App 图标、MobileNetV2 模型、API 配置模板
+Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本
 ```
 

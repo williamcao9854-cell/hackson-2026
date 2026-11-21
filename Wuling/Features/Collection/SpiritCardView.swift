@@ -20,7 +20,7 @@ struct SpiritCardView: View {
                 }
                 .overlay(alignment: .bottomLeading) {
                     if spirit.isReleased {
-                        SealStamp(text: "送别", size: 28, rotation: .degrees(-10))
+                        SealStamp(text: spirit.isRelayed ? "传出" : "送别", size: 28, rotation: .degrees(-10))
                             .padding(10)
                     }
                 }
@@ -30,7 +30,9 @@ struct SpiritCardView: View {
                     Text(spirit.objectName)
                         .font(.system(size: 14, weight: .semibold))
                         .lineLimit(1)
-                    Text(WLFormat.serial(spirit.serial))
+                    Text(spirit.chapters.count > 1
+                         ? "\(WLFormat.serial(spirit.serial)) · 第 \(spirit.chapters.count) 代"
+                         : WLFormat.serial(spirit.serial))
                         .font(.wlCaption)
                         .monospacedDigit()
                         .foregroundStyle(.inkSecondary)
@@ -52,6 +54,6 @@ struct SpiritCardView: View {
         }
         .shadow(color: .black.opacity(0.05), radius: 10, y: 6)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(spirit.name)，\(spirit.objectName)，\(spirit.isReleased ? "已送别" : "同住")")
+        .accessibilityLabel("\(spirit.name)，\(spirit.objectName)，\(spirit.isReleased ? spirit.departureSeal : "同住")")
     }
 }

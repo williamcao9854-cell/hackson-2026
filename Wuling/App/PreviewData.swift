@@ -31,6 +31,15 @@ enum PreviewData {
                                 companionship: item.3, memory: item.5, colorName: color.name, palette: [item.4],
                                 spiritImageData: nil, stickerImageData: nil, isPlaceholderArt: false)
             if item.6 { spirit.release(note: profile.farewellSuggestion) }
+            if index == 1 {
+                spirit.receivedAt = .now.addingTimeInterval(-2_000_000)
+                spirit.chapters = [
+                    RelayChapter(ownerSeal: "小林", receivedAt: .now.addingTimeInterval(-60_000_000),
+                                 passedAt: .now.addingTimeInterval(-2_000_000), companionshipRaw: Companionship.years.rawValue,
+                                 memory: "考研那年，每天早上都用它泡一杯咖啡。", noteToNext: "别用洗碗机，它会掉色。"),
+                    RelayChapter(ownerSeal: "阿明", receivedAt: .now.addingTimeInterval(-2_000_000)),
+                ]
+            }
             return spirit
         }
     }()

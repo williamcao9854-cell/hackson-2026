@@ -40,7 +40,12 @@ struct ShareCardView: View {
                         .foregroundStyle(.inkSecondary)
                 }
                 Spacer()
-                SealStamp(text: spirit.isReleased ? "已送别" : "同住", size: 44)
+                let seals = spirit.chapters.map(\.ownerSeal)
+                if seals.count > 1 {
+                    CollectorSeals(seals: seals, size: 26, limit: 3)
+                        .padding(.trailing, 6)
+                }
+                SealStamp(text: spirit.isReleased ? spirit.departureSeal : "同住", size: 44)
             }
         }
         .foregroundStyle(.ink)
