@@ -42,7 +42,7 @@ struct SceneSheet: View {
 
                     VStack(alignment: .leading, spacing: 16) {
                         Text("声音").eyebrow()
-                        soundToggle("背景音乐", detail: "古琴、泛音和远处的水声；白天、夜里各一段，下雨时添一层雨声",
+                        soundToggle("背景音乐", detail: "古筝的拨弦与刮奏，远处有风铃、鸟鸣和水声；夜里慢一些，下雨时添一层雨声",
                                     isOn: $musicOn)
                         soundToggle("音效", detail: "点水面、盖章、送别时的声音。手机静音时都不出声",
                                     isOn: $effectsOn)

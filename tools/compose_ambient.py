@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-合成物灵的背景音乐：古琴般的拨弦 + 泛音 + 低低的空弦 + 水声，再加一个雨声层。
+合成物灵的背景音乐：古筝、古琴般的拨弦 + 刮奏 + 泛音 + 风铃、鸟鸣、水声，再加一个雨声层。
 
 - 全部用代码合成，没有采样、没有版权素材，结果可复现（固定随机种子）
-- 五声音阶：白天是 D 宫（D E F♯ A B），夜里是 B 羽（B D E F♯ A），
+- 五声音阶：白天、夜里都是 D 宫（D E F♯ A B，明亮、不忧伤），夜里慢一些、低一些，像摇篮曲；
   和 App 里点水面的音（RitualSynth.waterScale，同样是 D E F♯ A B）是同一组音，怎么点都和得上
 - 每一层都按循环长度做成"首尾相接"：音符的余音、混响的尾巴都绕回开头，
   AVAudioPlayer numberOfLoops = -1 循环播放时听不到接缝
@@ -155,85 +155,125 @@ def soft_limit(x, peak=0.89):
 
 # MARK: - 曲子
 
+def chirp(rng, gain):
+    """一声鸟鸣：两三下很快的上挑"""
+    n = int(0.36 * SR)
+    out = np.zeros(n)
+    f0 = rng.uniform(2600, 3500)
+    for k in range(rng.integers(2, 4)):
+        start = int(k * 0.085 * SR)
+        m = int(0.06 * SR)
+        t = np.arange(m) / SR
+        f = f0 * (1 + 0.35 * np.sin(np.pi * t / 0.06)) * (1 + 0.06 * k)
+        phase = 2 * np.pi * np.cumsum(f) / SR
+        out[start:start + m] += np.sin(phase) * np.sin(np.pi * t / 0.06) ** 2
+    return out * gain
+
+
+def chime(rng, notes, gain):
+    """风过时一小串风铃：三四个高音错落着响"""
+    out = np.zeros(int(2.4 * SR))
+    for k in range(rng.integers(3, 5)):
+        f = hz(rng.choice(notes))
+        place(out, harmonic(f, 2.0, gain=gain * rng.uniform(0.6, 1.0), decay=0.9), k * rng.uniform(0.09, 0.16))
+    return out
+
+
 def compose(mood, seconds, seed):
+    """
+    白天、夜里都用 D 宫（D E F♯ A B，明亮的五声音阶），和 App 里点水面的音是同一组：
+    - 一句是一个小动机，重复一遍（第二遍挪一挪位置），最后落回宫音或徵音
+    - 句首有时来一串古筝式的上行刮奏，句尾偶尔点一个泛音
+    - 白天轻快些，远处有几声鸟鸣；夜里慢一些、低一些，像摇篮曲
+    """
     rng = np.random.default_rng(seed)
     n = int(seconds * SR)
     strings = np.zeros(n)
     night = mood == "night"
 
     if night:
-        # 手机扬声器放不出 150Hz 以下：夜里只比白天低一点，靠更慢、更空来显得深
-        melody = scale_notes(59, 81)      # B3 … A5
-        home = [59, 71, 66, 78]           # B 与 F#：羽调的主音、属音
-        gap_range, rest_range = (0.8, 1.9), (5.5, 9.0)
-        phrase_range = (2, 5)
-        decay_base = 4.2
+        scale = scale_notes(57, 83)       # A3 … B5
+        beat, rest_range = 0.5, (2.4, 4.2)
+        decay, brightness, gain_range = 2.8, 1.05, (0.45, 0.65)
+        gliss_chance, bass_notes = 0.15, [50, 45]
     else:
-        melody = scale_notes(62, 86)      # D4 … D6
-        home = [62, 69, 74, 81]
-        gap_range, rest_range = (0.45, 1.25), (3.2, 6.5)
-        phrase_range = (3, 6)
-        decay_base = 3.0
+        scale = scale_notes(62, 88)       # D4 … E6
+        beat, rest_range = 0.38, (1.8, 3.2)
+        decay, brightness, gain_range = 2.2, 1.25, (0.55, 0.78)
+        gliss_chance, bass_notes = 0.3, [50, 57]
+    home = [i for i, m in enumerate(scale) if m % 12 in (2, 9)]          # 宫（D）、徵（A）
+    # 动机：在五声音阶上的级进与小跳，多数往上走
+    motifs = [[0, 1, 2, 4], [0, 2, 1, 2], [0, 1, 2, 1], [2, 1, 2, 4], [0, 2, 4, 2], [1, 2, 4, 5], [0, 1, 0, 2]]
+    rhythms = [[1, 1, 2, 2], [1, 1, 1, 2], [0.5, 0.5, 1, 2], [1, 0.5, 0.5, 2], [1, 1, 0.5, 1.5]]
+    events = []
 
-    t = rng.uniform(0.3, 1.2)
-    index = rng.integers(len(melody) // 3, len(melody) // 2)
-    while t < seconds - 2.0:
-        # 一句的开头：低音区一根空弦，长长地响着
-        open_string = (47 if night else 50) + rng.choice([0, 7, 12])   # B2 / D3 起的空弦，泛着五度、八度
-        place(strings, pluck(hz(open_string), 7.0, rng, gain=0.45, decay=decay_base * 1.6, brightness=0.8), t)
+    def pluck_at(index, t, gain, length=4.5, d=decay):
+        midi = scale[int(np.clip(index, 0, len(scale) - 1))]
+        place(strings, pluck(hz(midi), length, rng, gain=gain, decay=d, brightness=brightness), t)
+        events.append((t, midi))
+        return midi
 
-        notes = rng.integers(*phrase_range, endpoint=True)
-        for k in range(notes):
-            # 五声音阶上的小步走，偶尔跳一下
-            step = rng.choice([-2, -1, -1, 1, 1, 2, 3, -3], p=[0.1, 0.22, 0.13, 0.22, 0.13, 0.1, 0.05, 0.05])
-            index = int(np.clip(index + step, 0, len(melody) - 1))
-            last = k == notes - 1
-            if last:
-                # 句尾落在主音或属音上
-                index = min(range(len(melody)), key=lambda i: min(abs(melody[i] - h) for h in home) * 10 + abs(i - index))
-            midi = melody[index]
-            f = hz(midi)
-            slide = rng.choice([0, 0, 0.03, 0.06]) if not last else 0.0
-            vibrato = 0.004 if last else rng.choice([0, 0, 0.002])
-            place(strings, pluck(f, 6.0, rng, gain=rng.uniform(0.55, 0.85), decay=decay_base * (1.25 if last else 1.0),
-                                 slide=slide, vibrato=vibrato), t)
-            # 偶尔一个倚音
-            if not last and rng.random() < 0.18:
-                grace = melody[int(np.clip(index + 1, 0, len(melody) - 1))]
-                place(strings, pluck(hz(grace), 2.5, rng, gain=0.3, decay=1.2), t - 0.11)
-            t += rng.uniform(*gap_range) * (1.6 if last else 1.0)
+    t = rng.uniform(0.3, 0.8)
+    while True:
+        motif = motifs[rng.integers(len(motifs))]
+        rhythm = rhythms[rng.integers(len(rhythms))]
+        phrase_len = beat * (2 * sum(rhythm) + 3) + 0.6
+        if t + phrase_len > seconds - 0.8:
+            break
+        start = home[rng.integers(0, max(1, len(home) // 2 + 1))]
 
-        # 句尾有时点两个泛音，像余音飘到水面上
-        if rng.random() < (0.75 if night else 0.55):
-            for j, interval in enumerate(rng.choice([[12, 19], [19, 24], [12, 24]])):
-                f = hz(melody[index] + interval)
-                while f > 1900:   # 太高的泛音刺耳，折回低八度
-                    f /= 2
-                place(strings, harmonic(f, 6.0, gain=0.22, decay=3.2), t + 0.35 + j * 0.62)
-        t += rng.uniform(*rest_range)
+        # 句首：一根低音空弦，再往上带一个五度
+        bass = bass_notes[rng.integers(len(bass_notes))]
+        place(strings, pluck(hz(bass), 5.0, rng, gain=0.32, decay=decay * 1.3, brightness=0.9), t)
+        place(strings, pluck(hz(bass + 7), 4.0, rng, gain=0.22, decay=decay * 1.1, brightness=0.9), t + beat)
+        # 古筝式的刮奏：从下往上一串，很快
+        if rng.random() < gliss_chance:
+            for k in range(7):
+                pluck_at(start - 6 + k, t + 0.055 * k, 0.12 + 0.03 * k, length=2.0, d=1.1)
+            t += 0.5
 
-    # 远处几滴水
+        # 动机两遍：第二遍挪个位置，节奏略变
+        for rep in range(2):
+            shift = 0 if rep == 0 else int(rng.choice([1, 2, -1]))
+            for k, step in enumerate(motif):
+                pluck_at(start + shift + step, t, rng.uniform(*gain_range))
+                t += beat * rhythm[k % len(rhythm)] * (1 if rep == 0 else rng.choice([1, 1, 0.75]))
+        # 落回宫音或徵音，余音长一点；有时在上面点一个泛音
+        last = min(home, key=lambda i: abs(i - (start + 2)))
+        midi = pluck_at(last, t, gain_range[1], length=6.0, d=decay * 1.5)
+        if rng.random() < (0.55 if night else 0.35):
+            f = hz(midi + 12)
+            while f > 1900:
+                f /= 2
+            place(strings, harmonic(f, 4.0, gain=0.16, decay=2.2), t + beat * 1.5)
+        t += beat * 3 + rng.uniform(*rest_range)
+
+    # 远处：几滴水、一两串风铃；白天还有几声鸟鸣
+    extras = np.zeros(n)
     water_notes = [hz(m) for m in scale_notes(86, 98)]
-    drops = np.zeros(n)
-    for _ in range(int(seconds / (9 if night else 6))):
-        place(drops, drip(rng.choice(water_notes), 0.4, gain=rng.uniform(0.05, 0.11)), rng.uniform(0, seconds))
+    for _ in range(int(seconds / (9 if night else 7))):
+        place(extras, drip(rng.choice(water_notes), 0.4, gain=rng.uniform(0.04, 0.08)), rng.uniform(0, seconds))
+    for _ in range(2 if night else 3):
+        place(extras, chime(rng, scale_notes(86, 95), 0.06 if night else 0.07), rng.uniform(0, seconds))
+    if not night:
+        for _ in range(5):
+            place(extras, chirp(rng, rng.uniform(0.025, 0.045)), rng.uniform(0, seconds))
 
-    # 若有若无的持续低音：宫与徵（夜里是羽与角），慢慢呼吸
-    drone_root = hz(59) if night else hz(62)   # B3 / D4
-    breath_a = 0.55 + 0.45 * periodic_lfo(n, 3, 0.3)
-    breath_b = 0.55 + 0.45 * periodic_lfo(n, 4, 1.7)
-    # 让频率在循环里也首尾相接：取最接近的、在循环长度里正好走完整数圈的频率
+    # 铺底：宫、角、徵（D、F♯、A，一个大三和弦）若有若无地呼吸，比只有五度暖
     drone = np.zeros(n)
-    for ratio, amp, lfo in [(1, 1.0, breath_a), (1.5, 0.6, breath_b), (2, 0.25, breath_a)]:
-        cycles = round(drone_root * ratio * seconds)
+    root = hz(62)
+    for ratio, amp, cycles_lfo, phase in [(1, 1.0, 3, 0.3), (1.25, 0.45, 4, 1.7), (1.5, 0.6, 5, 2.9)]:
+        cycles = round(root * ratio * seconds)
+        lfo = 0.55 + 0.45 * periodic_lfo(n, cycles_lfo, phase)
         drone += amp * np.sin(2 * np.pi * cycles * np.arange(n) / n) * lfo
 
-    # 水声：200～1500Hz 一带的流水，起伏缓慢
-    water = periodic_noise(n, rng, lambda f: np.where(f > 120, 1 / np.sqrt(np.maximum(f, 1)), 0) * np.exp(-((np.log(np.maximum(f, 1)) - np.log(520)) ** 2) / 1.2))
+    # 水声：句与句之间也不空
+    water = periodic_noise(n, rng, lambda f: np.where(f > 120, 1 / np.sqrt(np.maximum(f, 1)), 0) * np.exp(-((np.log(np.maximum(f, 1)) - np.log(560)) ** 2) / 1.2))
     water *= 0.7 + 0.3 * periodic_lfo(n, 5, 0.9) * periodic_lfo(n, 2, 0.2)
 
-    mix = strings * 1.0 + drops + drone * (0.05 if night else 0.04) + water * (0.03 if night else 0.035)
-    mix = reverb(mix, rng, seconds=4.0 if night else 3.2, wet=0.55 if night else 0.45)
+    mix = strings + extras + drone * (0.035 if night else 0.03) + water * (0.032 if night else 0.032)
+    mix = reverb(mix, rng, seconds=3.0 if night else 2.2, wet=0.42 if night else 0.32)
+    compose.events = events
     return soft_limit(mix, peak=0.85)
 
 

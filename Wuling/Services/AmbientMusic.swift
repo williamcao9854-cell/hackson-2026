@@ -3,7 +3,7 @@ import AVFoundation
 #endif
 import Foundation
 
-/// 园林的背景音乐：古琴般的拨弦、泛音、远处的水声（`tools/compose_ambient.py` 合成，见 Resources/Sounds）。
+/// 园林的背景音乐：古筝般的拨弦与刮奏、泛音、风铃、鸟鸣和远处的水声，明亮的 D 宫五声音阶（`tools/compose_ambient.py` 合成，见 Resources/Sounds）。
 ///
 /// - 白天、夜里各一段；园林下雨时再叠一层雨声。换景时交叉淡入淡出。
 /// - 仪式时（醒来、送别、来信）先让一让：压低几秒，留出风铃和水声。
