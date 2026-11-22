@@ -12,6 +12,10 @@ struct CollectionView: View {
     @State private var showingOnboarding = false
     @State private var showingReceive = false
     @State private var showingScenes = false
+    @State private var openLetter: SeasonalLetter?
+    /// 在换景面板里点了「收一封节气来信」：等面板退场后再打开
+    @State private var demoLetterPending = false
+    @AppStorage(LetterPost.readKey) private var readLetters = ""
     @AppStorage("wuling.onboarded") private var onboarded = false
     @AppStorage(SceneChoice.storageKey) private var sceneChoice: SceneChoice = .auto
     @Namespace private var zoom
@@ -47,13 +51,16 @@ struct CollectionView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { proxy in
+                let letter = unreadLetter
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         GardenHero(topInset: proxy.safeAreaInsets.top,
                                    living: spirits.filter { !$0.isReleased },
                                    lanterns: releasedCount, geese: relayedCount,
                                    showEmptyHint: !spirits.isEmpty,
-                                   onChangeScene: { showingScenes = true })
+                                   onChangeScene: { showingScenes = true },
+                                   letter: letter,
+                                   onOpenLetter: { presentLetter(letter) })
                             .frame(height: max(460, proxy.size.height * 0.62))
 
                         if spirits.isEmpty {
@@ -123,8 +130,13 @@ struct CollectionView: View {
             .sheet(isPresented: $showingAbout) {
                 AboutView()
             }
-            .sheet(isPresented: $showingScenes) {
-                SceneSheet(lanterns: releasedCount, geese: relayedCount)
+            .sheet(isPresented: $showingScenes, onDismiss: openDemoLetterIfNeeded) {
+                SceneSheet(lanterns: releasedCount, geese: relayedCount) {
+                    demoLetterPending = true
+                }
+            }
+            .sheet(item: $openLetter) { letter in
+                LetterView(letter: letter)
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
                 OnboardingView()
@@ -146,11 +158,12 @@ struct CollectionView: View {
                 guard url.pathExtension.lowercased() == SpiritCapsule.fileExtension else { return }
                 do {
                     let capsule = try SpiritCapsule.read(from: url)
-                    if showingEncounter || showingAbout || showingOnboarding || showingReceive || showingScenes {
+                    if showingEncounter || showingAbout || showingOnboarding || showingReceive || showingScenes || openLetter != nil {
                         // 先关掉正在打开的页面，等它退场后再弹出，否则 SwiftUI 会丢掉这次弹窗
                         showingEncounter = false
                         showingAbout = false
                         showingScenes = false
+                        openLetter = nil
                         showingOnboarding = false
                         showingReceive = false
                         Task {
@@ -168,6 +181,34 @@ struct CollectionView: View {
         .foregroundStyle(.ink)
         // 换景时手动选了时辰：夜里整个 App 进入深色，其余时辰是和纸白
         .preferredColorScheme(sceneChoice.preferredColorScheme)
+    }
+
+    // MARK: - 节气来信
+
+    private var letterSenders: [LetterPost.Sender] { spirits.filter(\.isReleased).map(\.letterSender) }
+
+    /// 今天该来、还没读过的那封信
+    private var unreadLetter: SeasonalLetter? {
+        guard let letter = LetterPost.letter(on: .now, from: letterSenders) else { return nil }
+        return LetterPost.isRead(letter.id, in: readLetters) ? nil : letter
+    }
+
+    /// 打开就算读过，首页的「一封来信」随之收起
+    private func presentLetter(_ letter: SeasonalLetter?) {
+        guard let letter else { return }
+        withAnimation(.wlCalm) { readLetters = LetterPost.markingRead(letter.id, in: readLetters) }
+        openLetter = letter
+    }
+
+    /// 换景面板完全退场后，再打开演示来信（两个弹窗挤在同一帧会被吞掉）
+    private func openDemoLetterIfNeeded() {
+        guard demoLetterPending else { return }
+        demoLetterPending = false
+        let letter = LetterPost.demo(on: .now, term: sceneChoice.solarTerm(for: .now), from: letterSenders)
+        Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            openLetter = letter
+        }
     }
 
     private var livingCount: Int { spirits.filter { !$0.isReleased }.count }

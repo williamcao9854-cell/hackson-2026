@@ -130,6 +130,12 @@ final class Spirit {
         departureRaw = "released"
     }
 
+    /// 节气来信的寄信人（只有送别、传出过的物灵会寄信）
+    var letterSender: LetterPost.Sender {
+        LetterPost.Sender(id: id.uuidString, name: name, family: family, memory: memory,
+                          companionship: companionship, departedAt: releasedAt ?? createdAt, isRelayed: isRelayed)
+    }
+
     /// 传给下一位主人
     func relay(chapters: [RelayChapter], noteToNext: String, at date: Date = .now) {
         self.chapters = chapters

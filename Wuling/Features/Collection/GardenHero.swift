@@ -12,13 +12,17 @@ struct GardenHero: View {
     var showEmptyHint: Bool = true
     /// 轻点节气题签：换景
     var onChangeScene: (() -> Void)? = nil
+    /// 没读的节气来信
+    var letter: SeasonalLetter? = nil
+    var onOpenLetter: (() -> Void)? = nil
 
     private let maxFigures = 6
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .topLeading) {
-                LandscapeHeader(topInset: topInset, lanterns: lanterns, geese: geese, onChangeScene: onChangeScene)
+                LandscapeHeader(topInset: topInset, lanterns: lanterns, geese: geese, onChangeScene: onChangeScene,
+                                letter: letter, onOpenLetter: onOpenLetter)
 
                 // 岸：物灵站在这里，而不是飘在山腰上
                 ShoreGround()

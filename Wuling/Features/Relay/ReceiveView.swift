@@ -55,6 +55,31 @@ struct ReceiveView: View {
         link.startReceiving()
     }
 
+    /// 等待中想换个名章：先停掉广播，回到填写名章那一步
+    private func editSeal() {
+        link?.stop()
+        withAnimation(.wlCalm) { link = nil }
+        sealDraft = mySeal
+        Task {
+            try? await Task.sleep(for: .milliseconds(350))
+            sealFocused = true
+        }
+    }
+
+    private var editSealButton: some View {
+        Button {
+            editSeal()
+        } label: {
+            Label("改名章", systemImage: "pencil")
+                .font(.system(size: 13, weight: .medium))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.inkSecondary)
+    }
+
     private var closeButton: some View {
         Button { dismiss() } label: {
             Image(systemName: "xmark")
@@ -126,12 +151,23 @@ struct ReceiveView: View {
                 Button("再等一次") { link.searchAgain() }
                     .buttonStyle(.glass)
                     .foregroundStyle(.ink)
+                editSealButton
             }
         default:
             VStack(spacing: 20) {
                 ZStack {
                     InkRipples()
-                    SealStamp(text: link.seal, size: 64, rotation: .degrees(-6))
+                    // 轻点自己的名章，可以回去改
+                    Button {
+                        editSeal()
+                    } label: {
+                        SealStamp(text: link.seal, size: 64, rotation: .degrees(-6))
+                            .padding(12)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("我的名章：\(link.seal)")
+                    .accessibilityHint("轻点可以改名章")
                 }
                 .frame(height: 280)
                 Text("把手机靠近对方，等物灵飞来")
@@ -141,6 +177,7 @@ struct ReceiveView: View {
                     .foregroundStyle(.inkSecondary)
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
+                editSealButton
             }
         }
     }

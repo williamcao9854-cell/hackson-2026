@@ -90,6 +90,7 @@ struct ArrivalView: View {
         .sensoryFeedback(.impact(weight: .heavy), trigger: received)
         .onAppear {
             sealDraft = mySeal
+            RitualSound.prepare()
             isReturning = RelayInbox.existing(lineage: capsule.lineageID, in: modelContext) != nil
             withAnimation(.wlLift.delay(0.15)) { visible = true }
         }
@@ -180,6 +181,7 @@ struct ArrivalView: View {
         focused = false
         mySeal = normalizedSeal
         RelayInbox.receive(capsule, mySeal: normalizedSeal, in: modelContext)
+        RitualSound.play(.stamp)
         withAnimation(.spring(response: 0.32, dampingFraction: 0.6)) { received = true }
     }
 }

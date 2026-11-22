@@ -10,6 +10,9 @@ struct LandscapeHeader: View {
     var geese: Int
     /// 轻点题签：打开换景面板
     var onChangeScene: (() -> Void)? = nil
+    /// 有一封没读的节气来信时，标题下面亮起「一封来信」
+    var letter: SeasonalLetter? = nil
+    var onOpenLetter: (() -> Void)? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage(SceneChoice.storageKey) private var choice: SceneChoice = .auto
@@ -56,6 +59,14 @@ struct LandscapeHeader: View {
             .padding(.top, topInset + 4)
             .padding(.leading, Metrics.gutter)
             .allowsHitTesting(false)
+
+            if let letter, let onOpenLetter {
+                LetterBadge(messenger: letter.messenger, textColor: textColor, action: onOpenLetter)
+                    .padding(.top, topInset + 92)
+                    .padding(.leading, Metrics.gutter)
+                    .transition(.opacity.combined(with: .offset(y: -6)))
+                    .accessibilityLabel("一封来信，来自\(letter.spiritName)")
+            }
 
             // 节气 · 物候：也是换景的入口
             Button {

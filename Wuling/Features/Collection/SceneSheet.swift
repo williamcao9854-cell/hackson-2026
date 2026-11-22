@@ -7,6 +7,8 @@ import SwiftUI
 struct SceneSheet: View {
     var lanterns: Int
     var geese: Int
+    /// 演示：现在就收一封节气来信（面板关掉后由首页打开）
+    var onDemoLetter: (() -> Void)? = nil
 
     @AppStorage(SceneChoice.storageKey) private var choice: SceneChoice = .auto
     @AppStorage(SceneChoice.showcaseKey) private var showcase = false
@@ -36,16 +38,45 @@ struct SceneSheet: View {
                     }
                     .padding(.horizontal, Metrics.gutter)
 
-                    Toggle(isOn: $showcase.animation(.smooth)) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("演示河灯与鸿雁")
-                                .font(.system(size: 15, weight: .medium))
-                            Text("还没有送别、传出过物灵时，也在水上点几盏河灯，远天放一行鸿雁")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.inkSecondary)
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("演示").eyebrow()
+                        Toggle(isOn: $showcase.animation(.smooth)) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("演示河灯与鸿雁")
+                                    .font(.system(size: 15, weight: .medium))
+                                Text("还没有送别、传出过物灵时，也在水上点几盏河灯，远天放一行鸿雁")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.inkSecondary)
+                            }
+                        }
+                        .tint(.vermilion)
+
+                        if let onDemoLetter {
+                            Button {
+                                onDemoLetter()
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    LanternGlyph()
+                                        .frame(width: 26, height: 26)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("收一封节气来信")
+                                            .font(.system(size: 15, weight: .medium))
+                                        Text("不用等到下一个节气：送别过的物灵，现在就托河灯捎来一张短笺")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(.inkSecondary)
+                                            .multilineTextAlignment(.leading)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(.inkSecondary)
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
-                    .tint(.vermilion)
                     .padding(.horizontal, Metrics.gutter)
                 }
                 .padding(.top, 6)

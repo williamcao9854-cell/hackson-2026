@@ -3,7 +3,7 @@
 > 拍下一件旧物，唤醒它的物灵。道一声谢，然后放手；或者，把它和它的故事一起传给下一个人。
 
 黑客松项目 · Track 1 · Apple Human-Centered Care
-技术栈：Swift · SwiftUI · Liquid Glass · Core ML（FastViT · Depth Anything） · Vision · Foundation Models · SceneKit · Object Capture · AR Quick Look · MultipeerConnectivity · TipKit · AMD 图像生成 API
+技术栈：Swift · SwiftUI · Liquid Glass · Metal（GPU 墨点粒子 · 水面着色器） · Core ML（FastViT · Depth Anything） · Vision · Foundation Models · SceneKit · Object Capture · AR Quick Look · MultipeerConnectivity · TipKit · AMD 图像生成 API
 
 - 📐 [开发计划](docs/PLAN.md)：设计调研、设计语言「和纸与朱印」、技术方案
 - 💡 [创意方案 v4](docs/IDEAS-v4.md)：物灵是从这里选出来的
@@ -48,6 +48,9 @@ gh auth setup-git
 | 主体抠图（Vision） | ✅ | ⚠️ 可能不支持，会自动退回"照片贴纸" |
 | Core ML 识别 | ✅ | ✅ |
 | 设备端起名（Foundation Models） | ✅ 支持 Apple 智能的机型 | ⚠️ 取决于 Mac，不可用时自动用模板起名 |
+| 仪式音效 | ✅ 跟随静音开关，不打断音乐 | ✅ |
+
+没有 Apple 智能的机型（国行、旧机型）用模板起名时，也会读用户写下的记忆：认出「深夜、清晨、下雨、考研、外婆送的、搬家……」这类画面，回一句贴合的性格描述和送别语；没认出时，轻轻呼应记忆里的一个短语，不照抄整句。
 
 **路演请用真机演示。**
 
@@ -58,6 +61,17 @@ gh auth setup-git
 - 选「夜」时整个 App 会进入深色；选「此时此刻」恢复跟随真实的时辰与节气
 - **演示河灯与鸿雁**：图鉴还是空的时候，也能在水上点几盏河灯、远天放一行鸿雁
 - 轻点山水：水面荡开涟漪，山和天上晕开一点淡墨
+
+### 演示：送别的墨与水
+长按印章送别时，抠出来的旧物会被拆成几千个墨点（Metal 渲染管线，轨迹在顶点着色器里按时间算出），顺着风飘落到水面上，再沿着弧线汇聚成一盏亮起的河灯。
+- 水面是一个 SwiftUI 的 Metal 着色器：波纹来自真实的二维波动方程（会扩散、在岸边反射、相互叠加、慢慢平息），水线以上的物件、物灵插画和河灯都会倒映在水里
+- 河灯落水时荡开一圈涟漪，漂走时身后拖出细细的水纹；送别前轻点水面，也能荡开涟漪
+- 设备不支持 Metal 时，自动退回原来的光点动画
+
+### 演示：节气来信
+送别（或传出）过的物灵，每逢新节气会托河灯（传出的托鸿雁）捎回一张短笺；送别周年那几天，则由那位物灵来信。首页标题下会亮起「一封来信」，点开是一张竖排的八行笺：一句当季物候、一句贴着记忆的问候、「一切都好，勿念」，落款是物灵的名章和干支日期。
+- **不用等节气**：换景面板最下面的「演示 → 收一封节气来信」，面板收起后马上来信。图鉴里还没有送别过的物灵时，用示例物灵「青履君」
+- 不改数据表：信的内容由送别日期、名字、记忆和今天的节气算出来，读过哪几封只记在本机
 
 截图或录屏时也可以用启动参数直接指定：Xcode → Product → Scheme → Edit Scheme → Arguments，加上 `-scene night.autumn.clear`（顺序是 时辰.季节.天气，不想指定的写 `auto`）。
 
@@ -119,7 +133,7 @@ Wuling/
 │   ├── Relay/              传灵：盖章传出、面对面传 / 接灵、收下物灵
 │   └── Scan/               LiDAR 精细扫描（Object Capture）
 ├── Models/                 物灵（SwiftData）、陪伴时长、传灵章节与胶囊
-├── Services/               抠图、识别、取色、起名、提示词、图像 API、相机、节气、面对面连接
+├── Services/               抠图、识别、取色、起名与记忆回应、提示词、图像 API、相机、节气、面对面连接、仪式音效
 └── Resources/              App 图标、FastViT 识别模型、Depth Anything 深度模型、API 配置模板
 Wuling-Info.plist           声明 .wuling 文件类型（传灵用）
 tools/make_icon.py          生成 App 图标的脚本

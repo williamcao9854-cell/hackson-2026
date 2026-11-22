@@ -129,7 +129,7 @@ struct SpiritDetailView: View {
                     spiritImageData: spirit.spiritImageData,
                     spiritName: spirit.name,
                     palette: spirit.palette,
-                    suggestion: "谢谢你，陪我\(spirit.companionship.phrase)。"
+                    suggestion: TemplateSpiritWriter.farewellSuggestion(memory: spirit.memory, companionship: spirit.companionship)
                 ) { note in
                     spirit.release(note: note)
                     try? modelContext.save()

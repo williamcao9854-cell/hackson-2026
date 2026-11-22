@@ -19,6 +19,8 @@ struct RelaySendView: View {
     @State private var showingShare = false
     @State private var sent = false
     @State private var showingNearby = false
+    /// 在面对面页面点了「用其他方式发送」：等它退场后再打开系统分享
+    @State private var shareAfterNearby = false
     @State private var shareError: String?
     @FocusState private var focused: Bool
 
@@ -120,6 +122,7 @@ struct RelaySendView: View {
         .onAppear {
             sealDraft = mySeal
             memoryDraft = spirit.memory
+            RitualSound.prepare()
         }
     }
 
@@ -177,17 +180,6 @@ struct RelaySendView: View {
                 }
                 .buttonStyle(.glassProminent)
                 .tint(.vermilion)
-                .sheet(isPresented: $showingNearby) {
-                    NearbySendView(capsule: capsule, seal: normalizedSeal) {
-                        markRelayed()
-                    } onUseShareSheet: {
-                        // 等面对面页面退场后再打开系统分享
-                        Task {
-                            try? await Task.sleep(for: .milliseconds(600))
-                            share(capsule)
-                        }
-                    }
-                }
 
                 Button {
                     share(capsule)
@@ -244,6 +236,27 @@ struct RelaySendView: View {
         }
         .padding(.horizontal, Metrics.gutter)
         .padding(.bottom, 8)
+        // 挂在一直存在的底栏上：传出成功、按钮消失时，onDismiss 也照样会被调用
+        .sheet(isPresented: $showingNearby, onDismiss: openShareAfterNearby) {
+            if let capsule {
+                NearbySendView(capsule: capsule, seal: normalizedSeal) {
+                    markRelayed()
+                } onUseShareSheet: {
+                    shareAfterNearby = true
+                }
+            }
+        }
+    }
+
+    /// 面对面页面已经完全退场，这时再弹系统分享才不会被吞
+    private func openShareAfterNearby() {
+        guard shareAfterNearby else { return }
+        shareAfterNearby = false
+        guard let capsule, !sent else { return }
+        Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            share(capsule)
+        }
     }
 
     private func stamp() {
@@ -258,6 +271,7 @@ struct RelaySendView: View {
             noteToNext: noteToNext
         )
         capsule = spirit.makeCapsule(chapters: outgoingChapters).compressedForTransfer()
+        RitualSound.play(.stamp)
         withAnimation(.spring(response: 0.32, dampingFraction: 0.6)) { stamped = true }
     }
 

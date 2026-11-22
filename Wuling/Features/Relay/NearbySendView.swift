@@ -5,6 +5,8 @@ struct NearbySendView: View {
     let capsule: SpiritCapsule
     let seal: String
     var onSent: () -> Void
+    /// 用户想改用系统分享。这里只负责告诉外面，真正弹出要等本页完全退场（见 RelaySendView 的 onDismiss），
+    /// 两个弹窗挤在同一帧时，系统分享会被 SwiftUI 吞掉。
     var onUseShareSheet: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -173,8 +175,8 @@ struct NearbySendView: View {
 
     private var footer: some View {
         Button {
-            dismiss()
             onUseShareSheet()
+            dismiss()
         } label: {
             Label("用其他方式发送（隔空投送、微信……）", systemImage: "square.and.arrow.up")
                 .font(.system(size: 14, weight: .medium))
