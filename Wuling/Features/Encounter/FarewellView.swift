@@ -213,6 +213,8 @@ struct FarewellView: View {
         guard location.y > waterY, size.width > 0 else { return }
         ripples.drop(x: location.x / size.width, y: (location.y - waterY) / max(size.height - waterY, 1), strength: 0.7)
         waterTouches += 1
+        let notes = RitualSound.Cue.waterNotes
+        RitualSound.play(.water(min(max(Int(location.x / size.width * CGFloat(notes)), 0), notes - 1)))
     }
 
     private var particleColors: [Color] {
@@ -281,6 +283,8 @@ struct FarewellView: View {
 
     private func release() {
         noteFocused = false
+        // 风声、水声、盖章声之间，音乐先退到远处
+        AmbientMusic.duck(for: 7)
         onReleased(finalNote)
         dissolveStart = .now
         phase = .dissolving

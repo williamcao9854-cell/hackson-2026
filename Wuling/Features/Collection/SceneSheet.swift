@@ -12,6 +12,8 @@ struct SceneSheet: View {
 
     @AppStorage(SceneChoice.storageKey) private var choice: SceneChoice = .auto
     @AppStorage(SceneChoice.showcaseKey) private var showcase = false
+    @AppStorage(AmbientMusic.enabledKey) private var musicOn = true
+    @AppStorage(RitualSound.enabledKey) private var effectsOn = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -35,6 +37,15 @@ struct SceneSheet: View {
                         Text("选了「夜」，整个 App 会跟着进入夜色。")
                             .font(.system(size: 12))
                             .foregroundStyle(.inkSecondary)
+                    }
+                    .padding(.horizontal, Metrics.gutter)
+
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("声音").eyebrow()
+                        soundToggle("背景音乐", detail: "古琴、泛音和远处的水声；白天、夜里各一段，下雨时添一层雨声",
+                                    isOn: $musicOn)
+                        soundToggle("音效", detail: "点水面、盖章、送别时的声音。手机静音时都不出声",
+                                    isOn: $effectsOn)
                     }
                     .padding(.horizontal, Metrics.gutter)
 
@@ -95,6 +106,21 @@ struct SceneSheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.selection, trigger: choice)
+        .onChange(of: choice) { RitualSound.play(.tick) }
+        .onChange(of: musicOn) { AmbientMusic.refresh() }
+    }
+
+    private func soundToggle(_ title: String, detail: String, isOn: Binding<Bool>) -> some View {
+        Toggle(isOn: isOn) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .medium))
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.inkSecondary)
+            }
+        }
+        .tint(.vermilion)
     }
 
     // MARK: - 意境

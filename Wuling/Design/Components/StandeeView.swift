@@ -14,6 +14,7 @@ struct StandeeView: View {
     private let motion = MotionParallax.shared
     @State private var drag: CGSize = .zero
     @State private var hop = false
+    @State private var hops = 0
     @State private var phaseSeed = Double.random(in: 0...10)
     @State private var motionStarted = false
     @State private var isVisible = true
@@ -33,6 +34,8 @@ struct StandeeView: View {
         .simultaneousGesture(dragGesture, including: interactive ? .all : .none)
         .onTapGesture {
             guard interactive else { return }
+            RitualSound.play(.hop(hops % RitualSound.Cue.hopVariants))
+            hops += 1
             withAnimation(.spring(response: 0.25, dampingFraction: 0.45)) { hop = true }
             Task {
                 try? await Task.sleep(for: .milliseconds(180))

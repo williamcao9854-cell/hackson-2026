@@ -45,6 +45,8 @@ struct LetterView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .task { await unfold() }
+        // 字一列列显现时，指尖跟着轻轻一下，像毛笔一笔笔落在纸上
+        .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.35), trigger: revealedColumns)
     }
 
     private var header: some View {
@@ -74,11 +76,14 @@ struct LetterView: View {
 
     /// 河灯靠岸（水声）→ 信笺展开 → 字一列一列显现
     private func unfold() async {
-        RitualSound.prepare()
+        RitualSound.prepare([.lantern, .paper])
+        AmbientMusic.duck(for: 3.5)
         try? await Task.sleep(for: .milliseconds(200))
         RitualSound.play(.lantern)
         withAnimation(.wlLift) { arrived = true }
-        try? await Task.sleep(for: .milliseconds(450))
+        try? await Task.sleep(for: .milliseconds(380))
+        RitualSound.play(.paper)
+        try? await Task.sleep(for: .milliseconds(70))
         let total = LetterPaper.writtenColumns(for: letter)
         for column in 1...max(total, 1) {
             withAnimation(.easeOut(duration: 0.55)) { revealedColumns = column }

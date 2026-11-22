@@ -166,7 +166,8 @@ struct RevealView: View {
         RitualSound.prepare()
         withAnimation(.wlLift) { cardVisible = true }
         try? await Task.sleep(for: .milliseconds(200))
-        // 插画从朦胧中显现的同时，轻轻响一串风铃
+        // 插画从朦胧中显现的同时，轻轻响一串风铃（音乐先退到远处）
+        AmbientMusic.duck(for: 3.5)
         RitualSound.play(.awaken)
         withAnimation(.easeOut(duration: 1.4)) { artFocused = true }
         try? await Task.sleep(for: .milliseconds(1000))

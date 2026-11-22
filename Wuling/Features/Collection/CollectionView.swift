@@ -18,6 +18,8 @@ struct CollectionView: View {
     @AppStorage(LetterPost.readKey) private var readLetters = ""
     @AppStorage("wuling.onboarded") private var onboarded = false
     @AppStorage(SceneChoice.storageKey) private var sceneChoice: SceneChoice = .auto
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @Namespace private var zoom
 
     /// 隔空投送或从文件 App 打开的物灵
@@ -141,7 +143,14 @@ struct CollectionView: View {
             .fullScreenCover(isPresented: $showingOnboarding) {
                 OnboardingView()
             }
-            .onAppear { if !onboarded { showingOnboarding = true } }
+            .onAppear {
+                if !onboarded { showingOnboarding = true }
+                // 点水面、点立牌这些随手的声音，先在后台备好
+                RitualSound.prepare(RitualSound.everyday)
+            }
+            // 背景音乐跟着园林走：白天、夜里换曲子，下雨时添一层雨声
+            .task(id: musicMood) { AmbientMusic.update(mood: musicMood.night ? .night : .day, rain: musicMood.rain) }
+            .onChange(of: scenePhase) { _, phase in AmbientMusic.setActive(phase == .active) }
             .onChange(of: onboarded) { _, done in if !done { showingOnboarding = true } }
             .fullScreenCover(item: $incoming) { item in
                 ArrivalView(capsule: item.capsule)
@@ -211,6 +220,17 @@ struct CollectionView: View {
         }
     }
 
+    /// 此刻园林的样子里，和音乐有关的两件事
+    private struct MusicMood: Equatable {
+        var night: Bool
+        var rain: Bool
+    }
+
+    private var musicMood: MusicMood {
+        let scene = LandscapeScene(date: .now, isDark: colorScheme == .dark, choice: sceneChoice, lanterns: 0, geese: 0)
+        return MusicMood(night: scene.isNight, rain: scene.weather == .rain)
+    }
+
     private var livingCount: Int { spirits.filter { !$0.isReleased }.count }
     private var relayedCount: Int { spirits.filter(\.isRelayed).count }
     private var releasedCount: Int { spirits.count - livingCount - relayedCount }
@@ -243,6 +263,7 @@ struct CollectionView: View {
     private func filterChip(symbol: String?, text: String, count: Int, target: Filter) -> some View {
         let selected = filter == target
         return Button {
+            RitualSound.play(.tick)
             withAnimation(.smooth) { filter = target }
         } label: {
             HStack(spacing: 5) {

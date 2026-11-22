@@ -251,6 +251,7 @@ struct CaptureView: View {
                     guard !isCapturing else { return }
                     isCapturing = true
                     shutterCount += 1
+                    RitualSound.play(.shutter)
                     Task {
                         if let image = await camera.capturePhoto() {
                             camera.stop()

@@ -6,7 +6,8 @@ import SwiftUI
 ///
 /// - 换景时，新的一幅从题签处像一滴墨在宣纸上晕开，盖住旧的一幅
 /// - 第一次打开 App 时，首页的山水也这样从纸上晕开（只放一次）
-/// - 首页可以点：点在水上荡开涟漪，点在山和天上晕开一点淡墨
+/// - 首页可以点：点在水上荡开涟漪，并响一个水音（从左到右排成五声音阶，连着点像在弹水）；
+///   点在山和天上晕开一点淡墨，"嗒"地一声
 struct LivingLandscape: View {
     var scene: LandscapeScene
     /// 每秒画几帧：首页 24 帧；其他页面的淡背景 15 帧就够，省电
@@ -24,6 +25,7 @@ struct LivingLandscape: View {
     @State private var isVisible = true
     @State private var ripples: [LandscapeScene.Ripple] = []
     @State private var tapCount = 0
+    @State private var canvasSize: CGSize = .zero
     /// 当前稳定显示的景；换景时它成为"旧景"
     @State private var shown: LandscapeScene?
     @State private var outgoing: LandscapeScene?
@@ -49,6 +51,7 @@ struct LivingLandscape: View {
             canvas(at: timeline.date)
         }
         .contentShape(Rectangle())
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { canvasSize = $0 }
         .gesture(SpatialTapGesture().onEnded { value in addRipple(at: value.location) },
                  including: interactive ? .all : .none)
         .sensoryFeedback(.impact(flexibility: .soft, intensity: 0.5), trigger: tapCount)
@@ -144,12 +147,27 @@ struct LivingLandscape: View {
     }
 
     private func addRipple(at location: CGPoint) {
+        playTapSound(at: location)
         guard !reduceMotion else { return }
         let now: Double = Date.now.timeIntervalSince(start)
         var kept = ripples.filter { now - $0.start < LandscapeScene.rippleLife }
         kept.append(LandscapeScene.Ripple(x: Double(location.x), y: Double(location.y), start: now))
         ripples = Array(kept.suffix(6))
         tapCount += 1
+    }
+}
+
+extension LivingLandscape {
+    /// 水面上：按左右位置挑一个五声音阶的音；水面以上：毛笔点纸
+    fileprivate func playTapSound(at location: CGPoint) {
+        guard canvasSize.width > 0, canvasSize.height > 0 else { return }
+        if Double(location.y) > Double(canvasSize.height) * LandscapeScene.waterLine {
+            let notes = RitualSound.Cue.waterNotes
+            let note = Int(Double(location.x / canvasSize.width) * Double(notes))
+            RitualSound.play(.water(min(max(note, 0), notes - 1)))
+        } else {
+            RitualSound.play(.inkDot)
+        }
     }
 }
 

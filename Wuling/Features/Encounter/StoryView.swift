@@ -142,12 +142,14 @@ struct StoryView: View {
             .padding(.bottom, 8)
         }
         .sensoryFeedback(.selection, trigger: model.companionship)
+        .onChange(of: model.companionship) { RitualSound.play(.tick) }
         .sensoryFeedback(.selection, trigger: model.wearMarks)
         .sensoryFeedback(.selection, trigger: model.object)
         .sensoryFeedback(.impact(weight: .light), trigger: lifted)
         .onAppear {
             Task {
                 try? await Task.sleep(for: .milliseconds(250))
+                RitualSound.play(.peel)
                 lifted = true
             }
         }
