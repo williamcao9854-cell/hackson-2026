@@ -92,7 +92,7 @@ gh auth setup-git
 没有配置时 App 会用离线水彩剪影代替，流程照样能完整演示。
 
 1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
-2. 把里面的 `IMAGE_API_KEY` 换成真实的 Key（地址 `https://aihubmix.com`、模型 `gpt-image-2.6-flare` 已经填好），重新运行 App
+2. 把里面的 `IMAGE_API_KEY` 换成真实的 Key（地址 `https://api.inferera.com`（AiHubMix 中国大陆直连域名，免代理）、模型 `gpt-image-2.6-flare` 已经填好），重新运行 App
 3. **海报**已经生成好，在 `posters/poster.png`（插画原图 `posters/poster-art.png`，用 `gpt-image-2` high 画质画的）。要重新生成（在仓库根目录运行）：
    ```bash
    python3 -m pip install pillow

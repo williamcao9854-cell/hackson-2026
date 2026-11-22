@@ -77,7 +77,7 @@ struct ImageGenerationConfig: Sendable {
 }
 
 /// OpenAI 兼容的 `/images/generations` 客户端。
-/// 现在接的是 AiHubMix 的 gpt-image-2.6-flare（https://aihubmix.com/v1/images/generations），
+/// 现在接的是 AiHubMix 的 gpt-image-2.6-flare（https://api.inferera.com/v1/images/generations，中国大陆直连），
 /// 返回 `{"data":[{"b64_json": ...}]}`。换别的接口时，如果格式不同，只需要改这个文件。
 struct OpenAICompatibleImageGenerator: SpiritImageGenerating {
     let config: ImageGenerationConfig
