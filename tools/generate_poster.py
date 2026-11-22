@@ -6,9 +6,10 @@
     python3 -m pip install pillow          # 只需一次
     python3 tools/generate_poster.py       # 调 API 生成插画（默认 1024x1536、high 画质）+ 排版
     python3 tools/generate_poster.py --art posters/poster-art.png   # 已有插画，只重新排版
+    python3 tools/generate_poster.py --art posters/poster-art.png --lang en   # 只排英文版
 
 API 配置读取 Wuling/Resources/Secrets.plist（与 App 共用，不会提交到 Git）。
-输出：posters/poster-art.png（API 原图）、posters/poster.png（排版后的海报）。
+输出：posters/poster-art.png（API 原图）、posters/poster.png（中文海报）、posters/poster-en.png（英文海报）。
 """
 import argparse
 import base64
@@ -39,6 +40,14 @@ FONT_CANDIDATES = [
     ("/System/Library/Fonts/PingFang.ttc", 0),
     ("/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc", 2),    # Linux
     ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 2),
+]
+
+# 英文海报用的衬线字体
+LATIN_CANDIDATES = [
+    "/System/Library/Fonts/Supplemental/Baskerville.ttc",          # macOS
+    "/System/Library/Fonts/Supplemental/Georgia.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSerif-Regular.ttf",   # Linux
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf",
 ]
 
 PAPER = (0xF4, 0xF0, 0xE8)
@@ -152,11 +161,116 @@ def compose(art_path, out_path):
     print(f"✓ 海报已保存：{out_path}")
 
 
+def find_latin_font(preferred=None):
+    if preferred and os.path.exists(preferred):
+        return preferred
+    for path in LATIN_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return None
+
+
+def wrap(draw, text, font, width):
+    """按单词换行，每行不超过 width 像素"""
+    lines, line = [], ""
+    for word in text.split():
+        trial = f"{line} {word}".strip()
+        if draw.textlength(trial, font=font) <= width or not line:
+            line = trial
+        else:
+            lines.append(line)
+            line = word
+    if line:
+        lines.append(line)
+    return lines
+
+
+def compose_en(art_path, out_path, latin_font=None):
+    """英文海报：版式和中文版同一套（竖排「物灵」在右上，文字在左），文字换成英文"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+    except ImportError:
+        print("未安装 Pillow，跳过英文排版。")
+        return
+    found, latin = find_font(), find_latin_font(latin_font)
+    if not found or not latin:
+        print("找不到中文或英文字体，跳过英文排版。")
+        return
+    cjk_path, cjk_index = found
+
+    W, H = 1800, 2700
+    poster = Image.new("RGB", (W, H), PAPER)
+    art = Image.open(art_path).convert("RGB")
+    art_h = int(art.height * W / art.width)
+    poster.paste(art.resize((W, art_h), Image.LANCZOS), (0, H - art_h))
+    d = ImageDraw.Draw(poster)
+
+    def cjk(size):
+        return ImageFont.truetype(cjk_path, size, index=cjk_index)
+
+    def serif(size, weight="Regular"):
+        font = ImageFont.truetype(latin, size)
+        try:   # 可变字体（比如 EB Garamond）按名字取字重
+            font.set_variation_by_name(weight)
+        except Exception:
+            pass
+        return font
+
+    # 右上：竖排「物灵」，和中文版一样是这张海报的记号
+    x = W - 330
+    for i, ch in enumerate("物灵"):
+        d.text((x, 150 + i * 270), ch, font=cjk(250), fill=INK)
+
+    left, text_width = 140, W - 140 - 420
+    # 名字
+    spaced = " ".join("WULING")
+    d.text((left, 168), spaced, font=serif(44, "Medium"), fill=VERMILION)
+    # 标语：把记忆留下，把东西放下
+    y = 250
+    for line in ("Keep the memory.", "Let the thing go."):
+        d.text((left, y), line, font=serif(108), fill=INK)
+        y += 128
+    # 说明
+    y += 40
+    body = serif(48)
+    copy = ("Snap an old object you can’t bear to throw away and awaken its spirit. "
+            "Say thank you and let it go, or pass it on, story and all, to someone new.")
+    for line in wrap(d, copy, body, text_width):
+        d.text((left, y), line, font=body, fill=INK2)
+        y += 66
+    # 三种仪式：同住 · 送别 · 传灵
+    y += 34
+    rituals = [("同住", "Live with it"), ("送别", "Let it go"), ("传灵", "Pass it on")]
+    seal = 76
+    cx = left
+    for chinese, english in rituals:
+        d.rounded_rectangle([cx, y, cx + seal, y + seal], radius=10, fill=VERMILION)
+        d.rounded_rectangle([cx + 6, y + 6, cx + seal - 6, y + seal - 6], radius=7, outline=PAPER, width=3)
+        sf = cjk(26)
+        d.text((cx + seal / 2, y + seal * 0.32), chinese[0], font=sf, fill=PAPER, anchor="mm")
+        d.text((cx + seal / 2, y + seal * 0.68), chinese[1], font=sf, fill=PAPER, anchor="mm")
+        f = serif(40)
+        d.text((cx + seal + 18, y + seal / 2), english, font=f, fill=INK, anchor="lm")
+        cx += seal + 18 + d.textlength(english, font=f) + 44
+
+    # 底部信息条
+    bar = 150
+    d.rectangle([0, H - bar, W, H], fill=PAPER)
+    d.text((left, H - bar + 36), "Track 1 · Apple Human-Centered Care", font=serif(42), fill=INK)
+    d.text((left, H - bar + 92), "Swift · SwiftUI · Metal · Core ML · Vision · AMD Image Generation API", font=serif(30), fill=INK2)
+    d.text((W - left, H - bar + 75), "hackson-2026", font=serif(38), fill=VERMILION, anchor="rm")
+
+    poster.save(out_path)
+    print(f"✓ 英文海报已保存：{out_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="生成物灵项目海报")
     parser.add_argument("--art", help="已有插画路径，跳过 API 调用")
     parser.add_argument("--size", default="1024x1536", help="图像尺寸（默认 1024x1536，竖版）")
     parser.add_argument("--quality", default="high", help="画质 low / medium / high（默认 high，海报只生成一次）")
+    parser.add_argument("--lang", default="both", choices=["zh", "en", "both"], help="排哪个语言的海报（默认中英文都排）")
+    parser.add_argument("--latin-font", help="英文海报用的字体文件（默认 macOS 的 Baskerville，找不到再用其他衬线体）")
     args = parser.parse_args()
 
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -167,7 +281,10 @@ def main():
         with open(art_path, "wb") as f:
             f.write(generate_art(cfg, args.size, args.quality))
         print(f"✓ 插画已保存：{art_path}")
-    compose(art_path, os.path.join(OUT_DIR, "poster.png"))
+    if args.lang in ("zh", "both"):
+        compose(art_path, os.path.join(OUT_DIR, "poster.png"))
+    if args.lang in ("en", "both"):
+        compose_en(art_path, os.path.join(OUT_DIR, "poster-en.png"), args.latin_font)
 
 
 if __name__ == "__main__":
