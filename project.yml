@@ -30,3 +30,23 @@ targets:
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: "1"
         CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - target: WulingWidgetExtension
+  # 小组件（桌面「园林」、锁屏「节气」）：不用 App Groups，免费开发者账户也能装
+  WulingWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WulingWidget
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hackson2026.wuling.widget
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: WulingWidget-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: 物灵
+        SWIFT_VERSION: "5.0"
+        SWIFT_STRICT_CONCURRENCY: minimal
+        TARGETED_DEVICE_FAMILY: "1,2"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_STYLE: Automatic
