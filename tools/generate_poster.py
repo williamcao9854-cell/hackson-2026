@@ -4,7 +4,7 @@
 
 用法（在仓库根目录）：
     python3 -m pip install pillow          # 只需一次
-    python3 tools/generate_poster.py       # 调 API 生成插画 + 排版
+    python3 tools/generate_poster.py       # 调 API 生成插画（默认 1024x1536、high 画质）+ 排版
     python3 tools/generate_poster.py --art posters/poster-art.png   # 已有插画，只重新排版
 
 API 配置读取 Wuling/Resources/Secrets.plist（与 App 共用，不会提交到 Git）。
@@ -32,12 +32,13 @@ ART_PROMPT = (
     "No text, no letters, no signature, no border, no frame."
 )
 
+# (字体文件, 字体集里的第几个)：Noto CJK 的第 2 个是简体中文（第 0 个是日文字形）
 FONT_CANDIDATES = [
-    "/System/Library/Fonts/Supplemental/Songti.ttc",           # macOS 宋体
-    "/System/Library/Fonts/STHeiti Medium.ttc",
-    "/System/Library/Fonts/PingFang.ttc",
-    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",    # Linux
-    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    ("/System/Library/Fonts/Supplemental/Songti.ttc", 0),           # macOS 宋体
+    ("/System/Library/Fonts/STHeiti Medium.ttc", 0),
+    ("/System/Library/Fonts/PingFang.ttc", 0),
+    ("/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc", 2),    # Linux
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc", 2),
 ]
 
 PAPER = (0xF4, 0xF0, 0xE8)
@@ -57,19 +58,23 @@ def load_config():
     return cfg
 
 
-def generate_art(cfg, size):
+def generate_art(cfg, size, quality):
     url = cfg["IMAGE_API_BASE_URL"].rstrip("/") + "/" + cfg.get("IMAGE_API_PATH", "/v1/images/generations").lstrip("/")
-    body = {"model": cfg["IMAGE_API_MODEL"], "prompt": ART_PROMPT, "n": 1, "size": size or cfg.get("IMAGE_API_SIZE", "1024x1024")}
-    fmt = cfg.get("IMAGE_API_RESPONSE_FORMAT", "b64_json")
-    if fmt:
-        body["response_format"] = fmt
+    body = {"model": cfg["IMAGE_API_MODEL"], "prompt": ART_PROMPT, "n": 1, "size": size}
+    # gpt-image 系列：画质、输出格式；老的 dall-e 类接口才需要 response_format
+    if quality:
+        body["quality"] = quality
+    if cfg.get("IMAGE_API_OUTPUT_FORMAT"):
+        body["output_format"] = cfg["IMAGE_API_OUTPUT_FORMAT"]
+    if cfg.get("IMAGE_API_RESPONSE_FORMAT"):
+        body["response_format"] = cfg["IMAGE_API_RESPONSE_FORMAT"]
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST", headers={
         "Content-Type": "application/json",
         "Authorization": f"Bearer {cfg['IMAGE_API_KEY']}",
     })
-    print(f"→ 调用图像 API：{url}（模型 {body['model']}，尺寸 {body['size']}）")
+    print(f"→ 调用图像 API：{url}（模型 {body['model']}，尺寸 {body['size']}，画质 {quality or '默认'}），可能要一两分钟…")
     try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
+        with urllib.request.urlopen(req, timeout=600) as resp:
             data = json.load(resp)
     except urllib.error.HTTPError as e:
         sys.exit(f"API 返回错误 {e.code}：{e.read().decode(errors='replace')[:500]}")
@@ -83,9 +88,9 @@ def generate_art(cfg, size):
 
 
 def find_font():
-    for path in FONT_CANDIDATES:
+    for path, index in FONT_CANDIDATES:
         if os.path.exists(path):
-            return path
+            return path, index
     return None
 
 
@@ -95,8 +100,8 @@ def compose(art_path, out_path):
     except ImportError:
         print("未安装 Pillow，跳过排版。插画已保存，可以自己在 Keynote / Figma 里加标题。")
         return
-    font_path = find_font()
-    if not font_path:
+    found = find_font()
+    if not found:
         print("找不到中文字体，跳过排版。")
         return
 
@@ -109,8 +114,9 @@ def compose(art_path, out_path):
     poster.paste(art, (0, H - art_h))
 
     d = ImageDraw.Draw(poster)
+    font_path, font_index = found
     def font(size):
-        return ImageFont.truetype(font_path, size)
+        return ImageFont.truetype(font_path, size, index=font_index)
 
     # 竖排标题「物灵」，右上
     title = font(300)
@@ -149,7 +155,8 @@ def compose(art_path, out_path):
 def main():
     parser = argparse.ArgumentParser(description="生成物灵项目海报")
     parser.add_argument("--art", help="已有插画路径，跳过 API 调用")
-    parser.add_argument("--size", help="图像尺寸，例如 1024x1536（默认用 Secrets.plist 里的 IMAGE_API_SIZE）")
+    parser.add_argument("--size", default="1024x1536", help="图像尺寸（默认 1024x1536，竖版）")
+    parser.add_argument("--quality", default="high", help="画质 low / medium / high（默认 high，海报只生成一次）")
     args = parser.parse_args()
 
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -158,7 +165,7 @@ def main():
         cfg = load_config()
         art_path = os.path.join(OUT_DIR, "poster-art.png")
         with open(art_path, "wb") as f:
-            f.write(generate_art(cfg, args.size))
+            f.write(generate_art(cfg, args.size, args.quality))
         print(f"✓ 插画已保存：{art_path}")
     compose(art_path, os.path.join(OUT_DIR, "poster.png"))
 

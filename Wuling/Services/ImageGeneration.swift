@@ -34,8 +34,13 @@ struct ImageGenerationConfig: Sendable {
     var apiKey: String
     var model: String
     var size: String = "1024x1024"
-    /// 有的模型不接受 response_format，留空则不发送这个字段
-    var responseFormat: String? = "b64_json"
+    /// gpt-image 系列的画质：low / medium / high。留空则不发送，由接口自己决定（通常是最贵最慢的 high）
+    var quality: String?
+    /// gpt-image 系列的输出格式：png / jpeg。留空则不发送
+    var outputFormat: String?
+    /// 只有 dall-e 一类的老接口需要（"b64_json"）；gpt-image 系列不认这个字段，默认不发送。
+    /// 两种返回（b64_json 或 url）都能解析。
+    var responseFormat: String?
 
     var endpoint: URL {
         let trimmed = path.hasPrefix("/") ? String(path.dropFirst()) : path
@@ -64,15 +69,16 @@ struct ImageGenerationConfig: Sendable {
         var config = ImageGenerationConfig(baseURL: baseURL, apiKey: key, model: model)
         if let path = string("IMAGE_API_PATH") { config.path = path }
         if let size = string("IMAGE_API_SIZE") { config.size = size }
-        if plist["IMAGE_API_RESPONSE_FORMAT"] != nil {
-            config.responseFormat = string("IMAGE_API_RESPONSE_FORMAT")
-        }
+        config.quality = string("IMAGE_API_QUALITY")
+        config.outputFormat = string("IMAGE_API_OUTPUT_FORMAT")
+        config.responseFormat = string("IMAGE_API_RESPONSE_FORMAT")
         return config
     }
 }
 
 /// OpenAI 兼容的 `/images/generations` 客户端。
-/// 拿到 AMD API 文档后，如果格式不同，只需要改这个文件。
+/// 现在接的是 AiHubMix 的 gpt-image-2.6-flare（https://aihubmix.com/v1/images/generations），
+/// 返回 `{"data":[{"b64_json": ...}]}`。换别的接口时，如果格式不同，只需要改这个文件。
 struct OpenAICompatibleImageGenerator: SpiritImageGenerating {
     let config: ImageGenerationConfig
     var session: URLSession = .shared
@@ -90,6 +96,8 @@ struct OpenAICompatibleImageGenerator: SpiritImageGenerating {
             "n": 1,
             "size": config.size,
         ]
+        if let quality = config.quality { body["quality"] = quality }
+        if let format = config.outputFormat { body["output_format"] = format }
         if let format = config.responseFormat { body["response_format"] = format }
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request

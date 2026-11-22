@@ -87,25 +87,35 @@ gh auth setup-git
 第一次使用时，两台手机都会弹出"允许访问本地网络"，请点**允许**。
 如果面对面连不上，也可以选"其他方式发送"，通过隔空投送或微信传 `.wuling` 文件。
 
-### ⚠️ 接入 AMD 图像生成 API（比赛必须）
-比赛要求**必须调用 AMD 图像生成 API，并提交项目海报**。运行 App 本身不依赖它，没有配置时会用离线水彩剪影代替，但**路演和提交前一定要接上**。
+### 接入 AMD 图像生成 API（比赛必须）
+比赛要求**必须调用 AMD 图像生成 API，并提交项目海报**。现在接的是 **AiHubMix 平台的 `gpt-image-2.6-flare`**，按 OpenAI 兼容的 `/v1/images/generations` 格式调用。
+没有配置时 App 会用离线水彩剪影代替，流程照样能完整演示。
 
 1. 复制 `Wuling/Resources/Secrets.example.plist`，改名为 `Secrets.plist`，放在同一个文件夹
-2. 填入 API 地址、Key、模型名，重新运行 App
-3. **生成海报**（在仓库根目录运行）：
+2. 把里面的 `IMAGE_API_KEY` 换成真实的 Key（地址 `https://aihubmix.com`、模型 `gpt-image-2.6-flare` 已经填好），重新运行 App
+3. **海报**已经生成好，在 `posters/poster.png`（插画原图 `posters/poster-art.png`，用 `gpt-image-2` high 画质画的）。要重新生成（在仓库根目录运行）：
    ```bash
    python3 -m pip install pillow
    python3 tools/generate_poster.py
    ```
-   会调用 AMD API 画插画，再排版成竖版海报，保存在 `posters/poster.png`
+   会调用 API 画一张 1024×1536 的 high 画质插画，再排版成竖版海报；只改文字时加 `--art posters/poster-art.png`，不花钱
 
-`Secrets.plist` 已加入 `.gitignore`，**不会被提交**。
-接口默认按 OpenAI 兼容的 `/v1/images/generations` 格式调用，格式不同的话只需要改 `Wuling/Services/ImageGeneration.swift` 和 `tools/generate_poster.py`。
+`Secrets.plist` 已加入 `.gitignore`，**不会被提交**，每台 Mac 都要自己建一份。
+
+实测（1024×1024，同样的物灵提示词）：
+
+| 模型 · 画质 | 用时 | 每张花费 | 说明 |
+| --- | --- | --- | --- |
+| **`gpt-image-2.6-flare` · `low`（默认）** | 约 5 秒 | 约 0.026 美元 | 唤醒动画还没放完图就到了，路演用它 |
+| `gpt-image-2` · `low` | 约 14–15 秒 | 约 0.007 美元 | 更便宜，但现场要多等十秒 |
+| `gpt-image-2` · `medium` | 约 37 秒 | 约 0.055 美元 | 笔触更丰富，但现场等不起 |
+
+App 等 120 秒还没出图，就换成离线水彩剪影，不会卡住。
 
 ### 上台前检查
 - [ ] 两部演示手机都是 **iOS 26 或更高**（设置 → 通用 → 关于本机）
 - [ ] Mac 上装好 **Xcode 26 或更高**，并且运行过一次 `sudo xcode-select -s /Applications/Xcode.app`
-- [ ] 接好 AMD API，真机上试过几次，记下每次生成大概要多久
+- [ ] 演示用的 Mac 上建好 `Secrets.plist`，真机上唤醒过一次，确认能出图（约 15 秒）
 - [ ] 海报已生成
 - [ ] 深色模式、浅色模式都检查过一遍
 
